@@ -1041,9 +1041,10 @@ function Invoices() {
 
   // Delete invoice
   const handleDeleteInvoice = async (invoice) => {
+    const user = auth.currentUser;
     if (window.confirm('Are you sure you want to delete this scheduled invoice?')) {
       // Delete from Firestore
-      await deleteInvoice(invoice.id);
+      await deleteInvoice(user.uid, invoice.id);
       // Optionally, you can set userDeleted: true instead of deleting
       // await updateInvoice(invoice.id, { userDeleted: true });
       // Refresh invoices
@@ -1096,7 +1097,7 @@ function Invoices() {
       const newInvoice = await addInvoice(user.uid, invoiceData)
       console.log("Created new invoice:", newInvoice)
       // Optionally, delete the original scheduled invoice
-      await deleteInvoice(scheduledInvoice.id)
+      await deleteInvoice(user.uid, scheduledInvoice.id)
       // Update the local state with the new invoice
       setInvoices(prev => {
         // Make sure we're not duplicating
