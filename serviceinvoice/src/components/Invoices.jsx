@@ -881,28 +881,22 @@ function Invoices() {
         
         // Generate a unique invoice number
         let nextInvoiceNumber = "INV-0001"
-        
-        // Find the highest existing invoice number to determine the next one
-        if (invoices && invoices.length > 0) {
-          // Extract all numeric parts of invoice numbers
+        if (invoices.length > 0) {
+          // Extract all numeric parts of invoice numbers, skip undefined or non-string
           const invoiceNumbers = invoices
-            .filter(inv => inv && inv.invoiceNumber && typeof inv.invoiceNumber === 'string' && inv.invoiceNumber.startsWith("INV-"))
+            .filter(inv => typeof inv.invoiceNumber === 'string' && inv.invoiceNumber.startsWith("INV-"))
             .map(inv => {
               try {
                 const numStr = inv.invoiceNumber.replace("INV-", "")
                 return parseInt(numStr, 10)
               } catch (error) {
-                console.error("Error parsing invoice number:", error);
-                return 0;
+                return 0
               }
             })
             .filter(num => !isNaN(num))
-          
           if (invoiceNumbers.length > 0) {
-            // Find the maximum invoice number and add 1
             const maxNumber = Math.max(...invoiceNumbers)
             nextInvoiceNumber = `INV-${String(maxNumber + 1).padStart(4, '0')}`
-            console.log(`Generated new invoice number: ${nextInvoiceNumber} from max: ${maxNumber}`)
           }
         }
         
@@ -1080,19 +1074,21 @@ function Invoices() {
       // Generate a truly unique invoice number by finding the highest existing number and adding 1
       let nextInvoiceNumber = "INV-0001"
       if (invoices.length > 0) {
-        // Extract all numeric parts of invoice numbers
+        // Extract all numeric parts of invoice numbers, skip undefined or non-string
         const invoiceNumbers = invoices
-          .filter(inv => inv.invoiceNumber && inv.invoiceNumber.startsWith("INV-"))
+          .filter(inv => typeof inv.invoiceNumber === 'string' && inv.invoiceNumber.startsWith("INV-"))
           .map(inv => {
-            const numStr = inv.invoiceNumber.replace("INV-", "")
-            return parseInt(numStr, 10)
+            try {
+              const numStr = inv.invoiceNumber.replace("INV-", "")
+              return parseInt(numStr, 10)
+            } catch (error) {
+              return 0
+            }
           })
           .filter(num => !isNaN(num))
         if (invoiceNumbers.length > 0) {
-          // Find the maximum invoice number and add 1
           const maxNumber = Math.max(...invoiceNumbers)
           nextInvoiceNumber = `INV-${String(maxNumber + 1).padStart(4, '0')}`
-          console.log(`Generated new invoice number: ${nextInvoiceNumber} from max: ${maxNumber}`)
         }
       }
       invoiceData.invoiceNumber = nextInvoiceNumber
