@@ -111,7 +111,8 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     dueDate: '',
     status: 'pending',
     billingFrequency: 'one-time', // Default to one-time
-    isRecurring: false // Whether this is a recurring invoice
+    isRecurring: false, // Whether this is a recurring invoice
+    customized: false // Added for editing scheduled invoices
   })
   const [agentConfig, setAgentConfig] = useState(null)
   const [isFutureInvoice, setIsFutureInvoice] = useState(false)
@@ -178,7 +179,8 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
       clientId: formData.clientId, // Ensure this is explicitly set
       clientName: selectedClient ? selectedClient.name : '',
       // Add recurring or one-time flag based on billing frequency
-      isRecurring: formData.billingFrequency !== 'one-time'
+      isRecurring: formData.billingFrequency !== 'one-time',
+      customized: false // Reset customized flag for new invoices
     }
     
     console.log('Submitting invoice with client:', finalData.clientId, finalData.clientName)
@@ -1038,26 +1040,20 @@ function Invoices() {
 
   // Edit invoice
   const handleEditInvoice = async (invoice) => {
-    const user = auth.currentUser
-    if (user) {
-      // Ensure we have the date field
-      const dataWithDate = {
-        ...invoice,
-        date: invoice.date || new Date().toISOString().slice(0, 10)
-      }
-      
-      await updateInvoice(user.uid, dataWithDate)
-      setInvoices(prev => prev.map(i => i.id === invoice.id ? dataWithDate : i))
-    }
-    setEditingInvoice(null)
+    // Open the invoice form pre-filled with invoice data
+    setEditingInvoice({ ...invoice, isScheduled: true });
+    setShowForm(true);
   }
 
   // Delete invoice
-  const handleDeleteInvoice = async (invoiceId) => {
-    const user = auth.currentUser
-    if (user) {
-      await deleteInvoice(user.uid, invoiceId)
-      setInvoices(prev => prev.filter(i => i.id !== invoiceId))
+  const handleDeleteInvoice = async (invoice) => {
+    if (window.confirm('Are you sure you want to delete this scheduled invoice?')) {
+      // Delete from Firestore
+      await deleteInvoice(invoice.id);
+      // Optionally, you can set userDeleted: true instead of deleting
+      // await updateInvoice(invoice.id, { userDeleted: true });
+      // Refresh invoices
+      fetchInvoices();
     }
   }
 
@@ -1411,7 +1407,7 @@ function Invoices() {
                   <td className="py-4 px-4 text-right">
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={e => { e.stopPropagation(); setEditingInvoice(invoice); setShowForm(true); }}
+                        onClick={e => { e.stopPropagation(); handleEditInvoice(invoice); }}
                         className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
                         title="Edit"
                       >
@@ -1420,7 +1416,7 @@ function Invoices() {
                         </svg>
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); handleDeleteInvoice(invoice.id) }}
+                        onClick={e => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
                         className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
                         title="Delete"
                       >
@@ -1555,22 +1551,41 @@ function Invoices() {
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          {(invoice.type !== 'Pending Invoice') && (
-                            <>
-                              {(invoice.month === new Date().getMonth() && invoice.year === new Date().getFullYear()) || invoice.type === 'Manual Scheduled' ? (
-                                <button
-                                  onClick={() => handleSendNow(invoice)}
-                                  className="px-3 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200 transition-colors duration-200"
-                                >
-                                  Send Now
-                                </button>
-                              ) : (
-                                <span className="text-sm text-secondary-400">
-                                  Future invoice
-                                </span>
-                              )}
-                            </>
-                          )}
+                          <div className="flex justify-end space-x-2">
+                            {(() => {
+                              const scheduledDate = new Date(invoice.scheduledDate || invoice.date);
+                              const now = new Date();
+                              return scheduledDate.getMonth() === now.getMonth() && scheduledDate.getFullYear() === now.getFullYear();
+                            })() && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleSendNow(invoice); }}
+                                className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
+                                title="Send Now"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-6 9 6-9 6-9-6zm0 0v6a9 9 0 009 9 9 9 0 009-9v-6" />
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleEditInvoice(invoice); }}
+                              className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
+                              title="Edit"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
+                              className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
+                              title="Delete"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
