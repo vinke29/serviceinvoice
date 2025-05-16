@@ -69,225 +69,105 @@ exports.sendInvoiceEmail = functions.firestore
       };
 
       const emailHtml = `
-        <html>
-          <head>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                line-height: 1.6;
-                color: #333;
-                margin: 0;
-                padding: 0;
-              }
-              .invoice-container {
-                max-width: 800px;
-                margin: 0 auto;
-                padding: 20px;
-                border: 1px solid #ddd;
-              }
-              .header {
-                display: flex;
-                justify-content: space-between;
-                margin-bottom: 30px;
-              }
-              .logo-container {
-                flex: 1;
-              }
-              .logo {
-                max-width: 200px;
-                max-height: 100px;
-              }
-              .invoice-info {
-                flex: 1;
-                text-align: right;
-              }
-              .company-details {
-                margin-top: 20px;
-              }
-              .bill-to {
-                margin-bottom: 30px;
-              }
-              .invoice-table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 30px;
-              }
-              .invoice-table th {
-                background-color: #f5f5f5;
-                padding: 10px;
-                text-align: left;
-                border-bottom: 2px solid #ddd;
-              }
-              .invoice-table td {
-                padding: 10px;
-                border-bottom: 1px solid #eee;
-              }
-              .amount-column {
-                text-align: right;
-              }
-              .totals {
-                width: 100%;
-                margin-bottom: 30px;
-              }
-              .totals table {
-                width: 350px;
-                margin-left: auto;
-              }
-              .totals td {
-                padding: 5px 10px;
-              }
-              .total-row {
-                font-weight: bold;
-                border-top: 2px solid #ddd;
-              }
-              .payment-info {
-                margin-top: 30px;
-                border-top: 1px solid #ddd;
-                padding-top: 20px;
-              }
-              .footer {
-                margin-top: 40px;
-                text-align: center;
-                color: #777;
-                font-size: 14px;
-              }
-              .payment-button {
-                display: inline-block;
-                background-color: #4f46e5;
-                color: white;
-                padding: 12px 24px;
-                text-decoration: none;
-                border-radius: 4px;
-                font-weight: bold;
-                margin-top: 20px;
-              }
-              .payment-methods {
-                margin-top: 20px;
-              }
-              .late-fee {
-                margin-top: 20px;
-                font-style: italic;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="invoice-container">
-              <div class="header">
-                <div class="logo-container">
-                  ${user.logoUrl ? `<img src="${user.logoUrl}" alt="${user.companyName || user.name} Logo" class="logo">` : ''}
-                  <div class="company-details">
-                    <h2>${user.companyName || user.name}</h2>
-                    <p>${user.businessNumber ? `Business Number: ${user.businessNumber}<br>` : ''}
-                    ${user.address ? `${user.address}<br>` : ''}
-                    ${user.phone ? `${user.phone}<br>` : ''}
-                    ${user.email}</p>
-                  </div>
-                </div>
-                <div class="invoice-info">
-                  <h1>INVOICE</h1>
-                  <p><strong>${invoice.invoiceNumber}</strong></p>
-                  <table>
-                    <tr>
-                      <td><strong>DATE</strong></td>
-                      <td>${invoice.date}</td>
-                    </tr>
-                    <tr>
-                      <td><strong>DUE DATE</strong></td>
-                      <td>${invoice.dueDate}</td>
-                    </tr>
-                    <tr>
-                      <td><strong>BALANCE DUE</strong></td>
-                      <td>USD $${formatCurrency(total)}</td>
-                    </tr>
-                  </table>
-              </div>
-              </div>
-              
-              <div class="bill-to">
-                <h3>BILL TO</h3>
-                <p>
-                  ${client.name}<br>
-                  ${client.address ? `${client.address}<br>` : ''}
-                  ${client.city && client.state ? `${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}<br>` : ''}
-                  ${client.email}<br>
-                  ${client.phone ? `${client.phone}` : ''}
-                </p>
-              </div>
-              
-              <table class="invoice-table">
-                <thead>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invoice #${invoice.invoiceNumber}</title>
+        </head>
+        <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+            <tr>
+              <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
                   <tr>
-                    <th>DESCRIPTION</th>
-                    <th>RATE</th>
-                    <th>QTY</th>
-                    ${taxRate > 0 ? '<th>TAX</th>' : ''}
-                    <th>AMOUNT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${lineItems.map(item => `
-                  <tr>
-                      <td>${item.description}</td>
-                      <td>$${formatCurrency(item.rate || item.amount)}</td>
-                      <td>${item.quantity || 1}</td>
-                      ${taxRate > 0 ? `<td>${taxRate}%</td>` : ''}
-                      <td class="amount-column">$${formatCurrency(item.amount)}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-              
-              <div class="totals">
-                <table>
-                  <tr>
-                    <td>SUBTOTAL</td>
-                    <td class="amount-column">$${formatCurrency(subtotal)}</td>
-                  </tr>
-                  ${taxRate > 0 ? `
-                  <tr>
-                    <td>TAX (${taxRate}%)</td>
-                    <td class="amount-column">$${formatCurrency(taxAmount)}</td>
-                  </tr>
-                  ` : ''}
-                  <tr class="total-row">
-                    <td>TOTAL</td>
-                    <td class="amount-column">$${formatCurrency(total)}</td>
-                  </tr>
-                  ${invoice.paymentAmount ? `
-                  <tr>
-                    <td>Payment</td>
-                    <td class="amount-column">-$${formatCurrency(invoice.paymentAmount)}</td>
+                    <td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                      <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">INVOICE #${invoice.invoiceNumber}</span>
+                    </td>
                   </tr>
                   <tr>
-                    <td>BALANCE DUE</td>
-                    <td class="amount-column">USD $${formatCurrency(total - invoice.paymentAmount)}</td>
+                    <td style="padding:32px 40px 0 40px;">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td valign="top" width="60" style="padding-right:20px;">
+                            <div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>
+                          </td>
+                          <td valign="top">
+                            <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
+                            <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                            <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                            <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                            <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                            ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
                   </tr>
-                  ` : ''}
-              </table>
-              </div>
-              
-              <div class="payment-info">
-                ${user.paymentInstructions ? `<p>${user.paymentInstructions}</p>` : ''}
-                
-                ${user.venmoUsername ? `<p><strong>Venmo:</strong> @${user.venmoUsername}</p>` : ''}
-                
-                ${invoice.paymentLink ? `
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${invoice.paymentLink}" class="payment-button">Pay Now</a>
-                </div>
-                ` : ''}
-                
-                ${user.lateFeePolicy ? `
-                <p class="late-fee">${user.lateFeePolicy}</p>
-                ` : ''}
-              </div>
-              
-              <div class="footer">
-                <p>Thanks for your business!</p>
-                <p style="font-size: 12px;">This is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.</p>
-              </div>
-            </div>
-          </body>
+                  <tr>
+                    <td style="padding:24px 40px 0 40px;">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:4px;">
+                        <tr>
+                          <td style="padding:16px 0;text-align:center;font-size:15px;">
+                            <span style="display:inline-block;width:33%;"><strong>Date:</strong><br>${invoice.date}</span>
+                            <span style="display:inline-block;width:33%;"><strong>Due Date:</strong><br>${invoice.dueDate}</span>
+                            <span style="display:inline-block;width:33%;"><strong>Invoice #:</strong><br>${invoice.invoiceNumber}</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:24px 40px 0 40px;">
+                      <div style="font-size:15px;font-weight:bold;color:#2c5282;margin-bottom:8px;">BILL TO:</div>
+                      <div style="font-size:15px;color:#333;">${client.name}</div>
+                      <div style="font-size:13px;color:#333;">${client.address || ''}</div>
+                      <div style="font-size:13px;color:#333;">${client.email}</div>
+                      <div style="font-size:13px;color:#333;">${client.phone || ''}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:24px 40px 0 40px;">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                        <thead>
+                          <tr>
+                            <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Description</th>
+                            <th align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">${invoice.description}</td>
+                            <td align="right" style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">$${formatCurrency(invoice.amount)}</td>
+                          </tr>
+                          <tr>
+                            <td align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;">Total:</td>
+                            <td align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;">$${formatCurrency(invoice.amount)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  ${user.paymentInstructions ? `
+                  <tr>
+                    <td style="padding:0 40px 24px 40px;">
+                      <div style="margin-top:20px;text-align:center;color:#2c5282;font-size:15px;padding:10px;background:#e6f7ff;border-radius:5px;">
+                        ${user.paymentInstructions}
+                      </div>
+                    </td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="padding:24px 40px 40px 40px;border-top:1px solid #e2e8f0;text-align:center;">
+                      <div style="font-size:14px;color:#666;margin-bottom:5px;">Thank you for your business!</div>
+                      <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at ${user.email}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
         </html>
       `;
 
