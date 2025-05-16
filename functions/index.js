@@ -270,4 +270,113 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
       console.error('Error sending invoice email:', error);
       return null;
     }
+  });
+
+// Daily function to generate recurring invoices
+exports.generateRecurringInvoices = functions.pubsub
+  .schedule('0 0 * * *') // Run at midnight every day
+  .timeZone('UTC')
+  .onRun(async (context) => {
+    try {
+      const db = admin.firestore();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Get all active clients with recurring billing
+      const clientsSnapshot = await db.collectionGroup('clients')
+        .where('status', '==', 'active')
+        .where('billingFrequency', 'in', ['weekly', 'monthly', 'quarterly', 'biannually', 'annually'])
+        .get();
+
+      const processedClients = new Set();
+      const results = [];
+
+      for (const clientDoc of clientsSnapshot.docs) {
+        const client = clientDoc.data();
+        const userId = clientDoc.ref.parent.parent.id;
+
+        // Skip if we've already processed this client
+        if (processedClients.has(client.id)) continue;
+        processedClients.add(client.id);
+
+        // Check if client has a next invoice date
+        if (!client.nextInvoiceDate) continue;
+
+        const nextInvoiceDate = new Date(client.nextInvoiceDate);
+        nextInvoiceDate.setHours(0, 0, 0, 0);
+
+        // If next invoice date is today or in the past, generate the invoice
+        if (nextInvoiceDate <= today) {
+          try {
+            // Generate the invoice
+            const invoiceData = {
+              clientId: client.id,
+              clientName: client.name,
+              amount: client.fee || 0,
+              description: `${client.billingFrequency.charAt(0).toUpperCase() + client.billingFrequency.slice(1)} service fee`,
+              billingFrequency: client.billingFrequency,
+              date: today.toISOString().split('T')[0],
+              status: 'pending',
+              isRecurring: true
+            };
+
+            // Add the invoice
+            const invoiceRef = await db.collection('users')
+              .doc(userId)
+              .collection('invoices')
+              .add(invoiceData);
+
+            // Calculate and update next invoice date
+            let nextDate;
+            switch (client.billingFrequency) {
+              case 'weekly':
+                nextDate = new Date(today);
+                nextDate.setDate(nextDate.getDate() + 7);
+                break;
+              case 'monthly':
+                nextDate = new Date(today);
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                break;
+              case 'quarterly':
+                nextDate = new Date(today);
+                nextDate.setMonth(nextDate.getMonth() + 3);
+                break;
+              case 'biannually':
+                nextDate = new Date(today);
+                nextDate.setMonth(nextDate.getMonth() + 6);
+                break;
+              case 'annually':
+                nextDate = new Date(today);
+                nextDate.setFullYear(nextDate.getFullYear() + 1);
+                break;
+            }
+
+            // Update client with next invoice date
+            await clientDoc.ref.update({
+              nextInvoiceDate: nextDate.toISOString().split('T')[0],
+              lastInvoiced: today.toISOString().split('T')[0]
+            });
+
+            results.push({
+              clientId: client.id,
+              invoiceId: invoiceRef.id,
+              status: 'success'
+            });
+          } catch (error) {
+            console.error(`Error generating invoice for client ${client.id}:`, error);
+            results.push({
+              clientId: client.id,
+              status: 'error',
+              error: error.message
+            });
+          }
+        }
+      }
+
+      console.log('Recurring invoice generation results:', results);
+      return null;
+    } catch (error) {
+      console.error('Error in generateRecurringInvoices:', error);
+      throw error;
+    }
   }); 
