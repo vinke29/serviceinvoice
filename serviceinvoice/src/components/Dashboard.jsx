@@ -492,19 +492,15 @@ function Dashboard() {
     
     if (isFutureMonth || isCurrentMonth || selectedYear > thisYear) {
       clients.forEach(client => {
-        // Skip clients on hold
-        if (client.onHold) return;
-        
+        // Only include active clients (not cancelled/on hold) for future revenue
+        if (client.status !== 'active' || client.onHold) return;
         // Skip if we've already counted this client for this month
         if (processedClientIds.has(client.id)) return;
-        
         // Get the client fee
         const fee = Number(client.fee) || 0;
         if (fee === 0) return; // Skip if no fee set
-        
         try {
           let shouldCount = false;
-          
           // Special case: One-Time Charge
           if (client.billingFrequency === 'one-time') {
             if (client.firstInvoiceDate) {
