@@ -360,40 +360,7 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
         subject: `Invoice #${invoice.invoiceNumber} from ${user.name || 'Your Service Provider'}`,
         text: textContent,
         html: emailHtml,
-        categories: ['invoice', 'transactional'],
-        headers: {
-          'X-Entity-Ref-ID': invoiceId,
-          'List-Unsubscribe': `<mailto:unsubscribe@billienow.app?subject=Unsubscribe&body=${invoiceId}>`,
-          'Precedence': 'transactional',
-          'X-Auto-Response-Suppress': 'OOF, AutoReply',
-          'X-Priority': '1',
-          'X-MSMail-Priority': 'High',
-          'Importance': 'High'
-        },
-        mailSettings: {
-          sandboxMode: {
-            enable: false
-          },
-          bypassListManagement: {
-            enable: true  // This is a transactional email
-          }
-        },
-        trackingSettings: {
-          clickTracking: {
-            enable: true
-          },
-          openTracking: {
-            enable: true
-          },
-          subscriptionTracking: {
-            enable: false
-          }
-        },
-        asm: {
-          groupId: 0,  // Disable subscription management for transactional emails
-          groupsToDisplay: []
-        },
-        ipPoolName: "transactional"  // If you have dedicated IPs with SendGrid
+        categories: ['invoice', 'transactional']
       };
 
       await sgMail.send(msg);
