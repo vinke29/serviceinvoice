@@ -37,3 +37,5 @@ yarn-error.log*
 functions/.runtimeconfig.json
 .env*
 .firebase/
+google-cloud-cli-455.0.0-darwin-arm.tar.gz
+google-cloud-sdk/
