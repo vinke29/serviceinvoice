@@ -159,6 +159,16 @@ function Dashboard() {
   // Helper: get active client IDs
   const activeClientIds = clients.filter(c => c.status === 'active' && !c.onHold).map(c => c.id);
 
+  // Helper: should include invoice in dashboard calculations
+  const shouldIncludeInvoice = (inv) => {
+    if (inv.status === 'scheduled') {
+      // Only include scheduled invoices for active clients
+      return activeClientIds.includes(inv.clientId);
+    }
+    // Always include non-scheduled invoices
+    return true;
+  };
+
   // Calculate revenue for the selected year or month
   const calculateRevenue = () => {
     console.log("=============================================");
@@ -176,17 +186,16 @@ function Dashboard() {
     console.log(`Selected year: ${selectedYear}`);
     console.log(`Selected month: ${selectedMonth !== null ? months[selectedMonth] : 'All months'}`);
     
-    // Filter invoices by year, month, and active clients only
+    // Filter invoices by year, month, and shouldIncludeInvoice
     const yearInvoices = invoices.filter(inv => {
       try {
         const dueDate = new Date(inv.dueDate);
         const matchesYear = dueDate.getFullYear() === selectedYear;
-        const matchesClient = activeClientIds.includes(inv.clientId);
         // If a month is selected, also filter by month
         if (selectedMonth !== null) {
-          return matchesYear && dueDate.getMonth() === selectedMonth && matchesClient;
+          return matchesYear && dueDate.getMonth() === selectedMonth && shouldIncludeInvoice(inv);
         }
-        return matchesYear && matchesClient;
+        return matchesYear && shouldIncludeInvoice(inv);
       } catch (e) {
         return false;
       }
@@ -444,11 +453,11 @@ function Dashboard() {
     // Track which clients we've already counted to avoid double-counting
     const processedClientIds = new Set();
     
-    // Existing invoices for this month (based on due date) and active clients only
+    // Existing invoices for this month (based on due date) and shouldIncludeInvoice
     const monthInvoices = invoices.filter(inv => {
       try {
         const dueDate = new Date(inv.dueDate);
-        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear && activeClientIds.includes(inv.clientId);
+        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear && shouldIncludeInvoice(inv);
       } catch (e) {
         return false;
       }
