@@ -109,10 +109,23 @@ exports.sendInvoiceEmail = functions.firestore
                     <td style="padding:24px 40px 0 40px;">
                       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:4px;">
                         <tr>
-                          <td style="padding:16px 0;text-align:center;font-size:15px;">
-                            <span style="display:inline-block;width:33%;"><strong>Date:</strong><br>${invoice.date}</span>
-                            <span style="display:inline-block;width:33%;"><strong>Due Date:</strong><br>${invoice.dueDate}</span>
-                            <span style="display:inline-block;width:33%;"><strong>Invoice #:</strong><br>${invoice.invoiceNumber}</span>
+                          <td style="padding:16px 0;text-align:center;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                              <tr>
+                                <td style="width:33%;text-align:center;">
+                                  <div style="font-size:13px;color:#666;">Date</div>
+                                  <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.date}</div>
+                                </td>
+                                <td style="width:33%;text-align:center;">
+                                  <div style="font-size:13px;color:#666;">Due Date</div>
+                                  <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.dueDate}</div>
+                                </td>
+                                <td style="width:33%;text-align:center;">
+                                  <div style="font-size:13px;color:#666;">Invoice #</div>
+                                  <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.invoiceNumber}</div>
+                                </td>
+                              </tr>
+                            </table>
                           </td>
                         </tr>
                       </table>
@@ -142,8 +155,8 @@ exports.sendInvoiceEmail = functions.firestore
                             <td align="right" style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">$${formatCurrency(invoice.amount)}</td>
                           </tr>
                           <tr>
-                            <td align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;">Total:</td>
-                            <td align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;">$${formatCurrency(invoice.amount)}</td>
+                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">Total:</td>
+                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">$${formatCurrency(invoice.amount)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -158,9 +171,9 @@ exports.sendInvoiceEmail = functions.firestore
                     </td>
                   </tr>` : ''}
                   <tr>
-                    <td style="padding:24px 40px 40px 40px;border-top:1px solid #e2e8f0;text-align:center;">
-                      <div style="font-size:14px;color:#666;margin-bottom:5px;">Thank you for your business!</div>
-                      <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at ${user.email}</div>
+                    <td style="padding:32px 40px 32px 40px;border-top:1px solid #e2e8f0;text-align:center;background:#f8fafc;border-radius:0 0 8px 8px;">
+                      <div style="font-size:15px;color:#2c5282;margin-bottom:5px;font-weight:bold;">Thank you for your business!</div>
+                      <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                     </td>
                   </tr>
                 </table>
