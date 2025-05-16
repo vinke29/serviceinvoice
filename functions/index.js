@@ -200,7 +200,7 @@ exports.sendInvoiceEmail = functions.firestore
                       <td>USD $${formatCurrency(total)}</td>
                     </tr>
                   </table>
-                </div>
+              </div>
               </div>
               
               <div class="bill-to">
@@ -226,7 +226,7 @@ exports.sendInvoiceEmail = functions.firestore
                 </thead>
                 <tbody>
                   ${lineItems.map(item => `
-                    <tr>
+                  <tr>
                       <td>${item.description}</td>
                       <td>$${formatCurrency(item.rate || item.amount)}</td>
                       <td>${item.quantity || 1}</td>
@@ -263,7 +263,7 @@ exports.sendInvoiceEmail = functions.firestore
                     <td class="amount-column">USD $${formatCurrency(total - invoice.paymentAmount)}</td>
                   </tr>
                   ` : ''}
-                </table>
+              </table>
               </div>
               
               <div class="payment-info">
@@ -348,7 +348,7 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
       // 7. Add proper DMARC-friendly headers
       
       const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-      
+
       const msg = {
         to: client.email,
         from: {
