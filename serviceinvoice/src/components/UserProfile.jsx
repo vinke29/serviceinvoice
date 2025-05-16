@@ -119,15 +119,7 @@ function UserProfile() {
       // Create a storage reference
       const logoRef = ref(storage, `users/${user.uid}/logo`);
       
-      // Delete previous logo if it exists (to avoid storage clutter)
-      try {
-        await deleteObject(logoRef);
-      } catch (error) {
-        // Ignore errors if no previous file exists
-        console.log('No previous logo to delete or error deleting:', error);
-      }
-      
-      // Upload the file to Firebase Storage
+      // Upload the file to Firebase Storage (will overwrite if exists)
       const snapshot = await uploadBytes(logoRef, file);
       console.log('Uploaded logo to Storage:', snapshot);
       
