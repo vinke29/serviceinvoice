@@ -225,7 +225,10 @@ function Dashboard() {
     let futureInvoiceAmount = yearInvoices
       .filter(inv => 
         inv.status === 'scheduled' && // Include all scheduled invoices in expected revenue
-        !inv.deleted
+        !inv.deleted &&
+        // Only include scheduled invoices for active clients
+        clients.find(c => c.id === inv.clientId)?.status === 'active' &&
+        !clients.find(c => c.id === inv.clientId)?.onHold
       )
       .reduce((sum, inv) => sum + parseFloat(inv.amount || 0), 0);
     
@@ -461,7 +464,15 @@ function Dashboard() {
     
     // First count all existing unpaid invoices
     const unpaidFromExistingInvoices = monthInvoices
-      .filter(inv => inv.status !== 'paid' && inv.status !== 'Paid')
+      .filter(inv => 
+        inv.status !== 'paid' && 
+        inv.status !== 'Paid' &&
+        // Only include scheduled invoices for active clients
+        !(inv.status === 'scheduled' && (
+          clients.find(c => c.id === inv.clientId)?.status !== 'active' ||
+          clients.find(c => c.id === inv.clientId)?.onHold
+        ))
+      )
       .reduce((sum, inv) => {
         // Track which clients already have invoices to avoid double counting
         if (inv.clientId) {
