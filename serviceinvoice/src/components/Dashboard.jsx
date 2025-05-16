@@ -156,6 +156,9 @@ function Dashboard() {
     onHold: client.onHold
   })));
   
+  // Helper: get active client IDs
+  const activeClientIds = clients.filter(c => c.status === 'active' && !c.onHold).map(c => c.id);
+
   // Calculate revenue for the selected year or month
   const calculateRevenue = () => {
     console.log("=============================================");
@@ -173,24 +176,18 @@ function Dashboard() {
     console.log(`Selected year: ${selectedYear}`);
     console.log(`Selected month: ${selectedMonth !== null ? months[selectedMonth] : 'All months'}`);
     
-    // Filter clients belonging to the current user and not on hold
-    const validClients = clients.filter(c => !c.onHold);
-    console.log(`Found ${validClients.length} valid clients`);
-    
-    // Filter invoices by year and month (if selected)
+    // Filter invoices by year, month, and active clients only
     const yearInvoices = invoices.filter(inv => {
       try {
         const dueDate = new Date(inv.dueDate);
         const matchesYear = dueDate.getFullYear() === selectedYear;
-        
+        const matchesClient = activeClientIds.includes(inv.clientId);
         // If a month is selected, also filter by month
         if (selectedMonth !== null) {
-          return matchesYear && dueDate.getMonth() === selectedMonth;
+          return matchesYear && dueDate.getMonth() === selectedMonth && matchesClient;
         }
-        
-        return matchesYear;
+        return matchesYear && matchesClient;
       } catch (e) {
-        console.error(`Error checking date for invoice ${inv.id}:`, e);
         return false;
       }
     });
@@ -447,11 +444,11 @@ function Dashboard() {
     // Track which clients we've already counted to avoid double-counting
     const processedClientIds = new Set();
     
-    // Existing invoices for this month (based on due date)
+    // Existing invoices for this month (based on due date) and active clients only
     const monthInvoices = invoices.filter(inv => {
       try {
         const dueDate = new Date(inv.dueDate);
-        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear;
+        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear && activeClientIds.includes(inv.clientId);
       } catch (e) {
         return false;
       }
