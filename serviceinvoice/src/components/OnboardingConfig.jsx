@@ -7,15 +7,15 @@ function OnboardingConfig({ onSave, initialConfig }) {
   const [step, setStep] = useState(0);
 
   // Config state
-  const [netDays, setNetDays] = useState(initialConfig?.netDays || 15);
+  const [netDays, setNetDays] = useState(initialConfig?.netDays || 7);
   console.log("OnboardingConfig: Initial netDays set to =", netDays, "from", initialConfig?.netDays);
   const [reminderEnabled, setReminderEnabled] = useState(initialConfig?.reminderEnabled ?? true);
   const [reminderDaysBefore, setReminderDaysBefore] = useState(initialConfig?.reminderDaysBefore || 3);
   const [reminderTemplate, setReminderTemplate] = useState(initialConfig?.templates?.initial || 'Dear {clientName}, this is a friendly reminder that your invoice #{invoiceNumber} for ${amount} is due on {dueDate}. Please ensure timely payment to avoid any late fees.');
-  const [followupInterval, setFollowupInterval] = useState(initialConfig?.followupInterval || 2);
+  const [followupInterval, setFollowupInterval] = useState(initialConfig?.followupInterval || 3);
   const [maxFollowups, setMaxFollowups] = useState(initialConfig?.maxFollowups || 3);
   const [followupTemplate, setFollowupTemplate] = useState(initialConfig?.templates?.followUp || 'Dear {clientName}, your invoice #{invoiceNumber} for ${amount} is now {daysOverdue} days overdue. Please process the payment as soon as possible.');
-  const [escalationDays, setEscalationDays] = useState(initialConfig?.escalationDays || 7);
+  const [escalationDays, setEscalationDays] = useState(initialConfig?.escalationDays || 14);
   const [escalationTemplate, setEscalationTemplate] = useState(initialConfig?.templates?.escalation || 'Dear {clientName}, your invoice #{invoiceNumber} for ${amount} is now {daysOverdue} days overdue. This is our final notice before we take further action. Please contact us immediately to resolve this matter.');
 
   // Calculate total follow-up days
