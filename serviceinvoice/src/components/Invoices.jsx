@@ -1065,49 +1065,6 @@ function Invoices() {
       return
     }
 
-    // For manually scheduled invoices, just update the status to pending
-    if (scheduledInvoice.type === 'Manual Scheduled' && scheduledInvoice.id) {
-      try {
-        // Find the original invoice
-        const existingInvoice = invoices.find(inv => inv.id === scheduledInvoice.id);
-        
-        if (existingInvoice) {
-          // Change status from scheduled to pending
-          const updatedInvoice = {
-            ...existingInvoice,
-            status: 'pending',
-            // If the date was in the future, update it to today
-            date: getLocalDateString(),
-          };
-          
-          // Update the invoice in Firebase
-          await updateInvoice(user.uid, updatedInvoice);
-          
-          // Update local state
-          setInvoices(prev => prev.map(inv => 
-            inv.id === updatedInvoice.id ? updatedInvoice : inv
-          ));
-          
-          alert(`Invoice for ${scheduledInvoice.clientName} has been sent successfully`);
-          return;
-        }
-      } catch (error) {
-        console.error("Error sending manual scheduled invoice:", error);
-        alert(`Error sending invoice: ${error.message}`);
-        return;
-      }
-    }
-    
-    // Verify this is a current month invoice (for regular scheduled invoices)
-    if (scheduledInvoice.type !== 'Manual Scheduled') {
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      if (scheduledInvoice.month !== currentMonth || scheduledInvoice.year !== currentYear) {
-        alert("You can only send invoices for the current month");
-        return;
-      }
-    }
-
     try {
       // Create an actual invoice from the scheduled information
       const today = new Date();
@@ -1120,10 +1077,8 @@ function Invoices() {
         dueDate: scheduledInvoice.dueDate, // Keep the original due date
         status: 'pending'
       }
-      
       // Generate a truly unique invoice number by finding the highest existing number and adding 1
       let nextInvoiceNumber = "INV-0001"
-      
       if (invoices.length > 0) {
         // Extract all numeric parts of invoice numbers
         const invoiceNumbers = invoices
@@ -1133,7 +1088,6 @@ function Invoices() {
             return parseInt(numStr, 10)
           })
           .filter(num => !isNaN(num))
-        
         if (invoiceNumbers.length > 0) {
           // Find the maximum invoice number and add 1
           const maxNumber = Math.max(...invoiceNumbers)
@@ -1141,80 +1095,29 @@ function Invoices() {
           console.log(`Generated new invoice number: ${nextInvoiceNumber} from max: ${maxNumber}`)
         }
       }
-      
       invoiceData.invoiceNumber = nextInvoiceNumber
-      
       // Save the new invoice to Firebase with a forced unique ID
       const newInvoice = await addInvoice(user.uid, invoiceData)
-      console.log("Created new invoice:", newInvoice);
-      
+      console.log("Created new invoice:", newInvoice)
+      // Optionally, delete the original scheduled invoice
+      await deleteInvoice(scheduledInvoice.id)
       // Update the local state with the new invoice
       setInvoices(prev => {
         // Make sure we're not duplicating
-        const exists = prev.some(inv => 
-          inv.id === newInvoice.id || 
-          (inv.clientId === newInvoice.clientId && 
+        const exists = prev.some(inv =>
+          inv.id === newInvoice.id ||
+          (inv.clientId === newInvoice.clientId &&
            inv.dueDate === newInvoice.dueDate &&
            Math.abs(new Date(inv.date) - new Date(newInvoice.date)) < 86400000) // Within 24 hours
         )
-        
         // Only add if it doesn't exist
         if (!exists) {
-          console.log("Adding new invoice to state");
-          return [...prev, newInvoice];
+          return [...prev, newInvoice]
         } else {
-          console.log("Invoice already exists in state, not adding duplicate");
-          return prev;
+          return prev
         }
       })
-      
-      // If this was a "first invoice", update the client to use nextInvoiceDate instead
-      const client = clients.find(c => c.id === scheduledInvoice.clientId)
-      if (client && scheduledInvoice.isFirst) {
-        // Calculate next invoice date based on billing frequency
-        let nextDate = new Date(scheduledInvoice.scheduledDate)
-        
-        // Determine the billing frequency (default to monthly)
-        const frequency = client.billingFrequency || 'monthly'
-        
-        // Add appropriate time based on frequency
-        switch (frequency.toLowerCase()) {
-          case 'weekly':
-            nextDate.setDate(nextDate.getDate() + 7)
-            break
-          case 'biweekly':
-            nextDate.setDate(nextDate.getDate() + 14)
-            break
-          case 'monthly':
-            nextDate.setMonth(nextDate.getMonth() + 1)
-            break
-          case 'quarterly':
-            nextDate.setMonth(nextDate.getMonth() + 3)
-            break
-          case 'annually':
-            nextDate.setFullYear(nextDate.getFullYear() + 1)
-            break
-          default:
-            nextDate.setMonth(nextDate.getMonth() + 1) // Default to monthly
-        }
-        
-        // Update the client's nextInvoiceDate and clear firstInvoiceDate
-        const clientUpdate = {
-          ...client,
-          firstInvoiceDate: null,
-          nextInvoiceDate: nextDate.toISOString().slice(0, 10),
-          lastInvoiced: getLocalDateString()
-        }
-        
-        // Update the client in Firebase
-        await updateClient(user.uid, clientUpdate)
-        
-        // Update the clients list in state
-        setClients(prev => prev.map(c => c.id === client.id ? clientUpdate : c))
-      }
-      
-      alert(`Invoice for ${scheduledInvoice.clientName} has been created successfully`)
-      
+      alert(`Invoice for ${scheduledInvoice.clientName} has been created and sent successfully`)
     } catch (error) {
       console.error("Error sending invoice now:", error)
       alert(`Error creating invoice: ${error.message}`)
