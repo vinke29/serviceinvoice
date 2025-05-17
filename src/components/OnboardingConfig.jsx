@@ -7,10 +7,12 @@ function OnboardingConfig({ onSave, initialConfig }) {
   const [step, setStep] = useState(0);
 
   // Config state
-  const [netDays, setNetDays] = useState(initialConfig?.netDays || 7);
+  const [netDays, setNetDays] = useState(initialConfig?.netDays ?? 0);
   console.log("OnboardingConfig: Initial netDays set to =", netDays, "from", initialConfig?.netDays);
-  const [reminderEnabled, setReminderEnabled] = useState(initialConfig?.reminderEnabled ?? true);
-  const [reminderDaysBefore, setReminderDaysBefore] = useState(initialConfig?.reminderDaysBefore || 3);
+  const [reminderEnabled, setReminderEnabled] = useState(
+    initialConfig?.reminderEnabled ?? (initialConfig?.netDays === 0 || initialConfig?.netDays === undefined ? false : true)
+  );
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(initialConfig?.reminderDaysBefore || 1);
   const [reminderTemplate, setReminderTemplate] = useState(initialConfig?.templates?.initial || 'Dear {clientName}, this is a friendly reminder that your invoice #{invoiceNumber} for ${amount} is due on {dueDate}. Please ensure timely payment to avoid any late fees.');
   const [followupInterval, setFollowupInterval] = useState(initialConfig?.followupInterval || 3);
   const [maxFollowups, setMaxFollowups] = useState(initialConfig?.maxFollowups || 3);
@@ -80,9 +82,9 @@ function OnboardingConfig({ onSave, initialConfig }) {
       title: 'Initial Reminder (before due date)',
       content: (
         <div className="space-y-4">
-          {netDays <= 1 ? (
+          {netDays <= 0 ? (
             <div className="text-xs text-orange-600 mt-1">
-              Reminders before the due date are not available for invoices due in 1 day.
+              Reminders before the due date are not available for invoices due immediately.
             </div>
           ) : (
             <>
