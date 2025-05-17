@@ -79,7 +79,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
       return
     }
     onSubmit(formattedData)
-    showToast('success', 'Client updated successfully!')
+    showToast('success', isNewClient ? 'Client created successfully!' : 'Client updated successfully!')
   }
 
   // Determine if this is a new client (no id)
@@ -193,7 +193,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
             setShowStatusModal(false)
             if (pendingData) {
               onSubmit(pendingData)
-              showToast('success', 'Client updated successfully!')
+              showToast('success', isNewClient ? 'Client created successfully!' : 'Client updated successfully!')
             }
           }}
           clientName={`${formData.firstName} ${formData.lastName}`.trim()}
