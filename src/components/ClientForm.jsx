@@ -16,7 +16,8 @@ const formatDateString = (date) => {
 
 function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     address: '',
@@ -35,7 +36,15 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
 
   useEffect(() => {
     if (client) {
-      setFormData(client)
+      // Split existing name into firstName and lastName if it exists
+      const { name, ...otherFields } = client;
+      let firstName = '', lastName = '';
+      if (name) {
+        const nameParts = name.trim().split(/\s+/);
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+      setFormData({ ...otherFields, firstName, lastName });
     } else {
       // Set customerSince to today on creation and status to active
       setFormData(f => ({ 
@@ -50,11 +59,16 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
   
   const handleSubmit = (e) => {
     e.preventDefault()
-    // Ensure dates are in the correct format before submitting
+    // Combine firstName and lastName into name field and ensure dates are in correct format
     const formattedData = {
       ...formData,
+      name: `${formData.firstName} ${formData.lastName}`.trim(),
       customerSince: formData.customerSince ? formatDateString(formData.customerSince) : ''
     };
+    // Remove firstName and lastName from final submission
+    delete formattedData.firstName;
+    delete formattedData.lastName;
+
     if (['on_hold', 'cancelled'].includes(formData.status)) {
       setPendingData(formattedData)
       setShowStatusModal(true)
@@ -69,15 +83,29 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Name</label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            required
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
+            <input
+              type="text"
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              required
+              placeholder="John"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
+            <input
+              type="text"
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              required
+              placeholder="Smith"
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
@@ -160,7 +188,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
             setShowStatusModal(false)
             if (pendingData) onSubmit(pendingData)
           }}
-          clientName={formData.name}
+          clientName={`${formData.firstName} ${formData.lastName}`.trim()}
           action={formData.status === 'cancelled' ? 'cancel' : 'hold'}
           scheduledInvoicesCount={scheduledInvoicesCount}
         />

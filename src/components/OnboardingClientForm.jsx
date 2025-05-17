@@ -3,7 +3,8 @@ import { useState } from 'react'
 function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, setFormData }) {
   // Use controlled state from parent if provided, else fallback to internal state
   const [internalFormData, internalSetFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     phone: '',
     address: '',
@@ -15,21 +16,42 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onSubmit(data)
+    // Combine firstName and lastName into name field for submission
+    const submissionData = {
+      ...data,
+      name: `${data.firstName} ${data.lastName}`.trim()
+    };
+    // Remove firstName and lastName from final submission
+    delete submissionData.firstName;
+    delete submissionData.lastName;
+    onSubmit(submissionData)
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" id="onboarding-client-form">
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Client Name</label>
-        <input
-          type="text"
-          value={data.name}
-          onChange={(e) => setData({ ...data, name: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
-          placeholder="e.g. Acme Corp or John Smith"
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
+          <input
+            type="text"
+            value={data.firstName}
+            onChange={(e) => setData({ ...data, firstName: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+            placeholder="John"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
+          <input
+            type="text"
+            value={data.lastName}
+            onChange={(e) => setData({ ...data, lastName: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+            placeholder="Smith"
+          />
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
