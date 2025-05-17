@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { showToast } from '../utils/toast.jsx';
+import { showToast } from '../utils/toast.jsx'; // Ensure this path is correct
 
 // Event bus for the invoice generation notifications
 export const InvoiceGenerationEvents = {
   // Subscribe to invoice generation events
   subscribe: (callback) => {
     window.addEventListener('invoice-generated', callback);
+    // Return the cleanup function directly
     return () => window.removeEventListener('invoice-generated', callback);
   },
   
@@ -17,14 +18,17 @@ export const InvoiceGenerationEvents = {
 
 export default function InvoiceGeneratedNotification() {
   useEffect(() => {
-    // Subscribe to invoice generation events
-    const unsubscribe = InvoiceGenerationEvents.subscribe((event) => {
-      const { invoice, client } = event.detail;
-      const message = `Created invoice #${invoice?.invoiceNumber} for ${client?.name}. View it in the "Upcoming Invoices" section.`;
+    const handleInvoiceGenerated = (event) => {
+      const { invoice } = event.detail;
+      const message = `Invoice #${invoice?.invoiceNumber} has been created successfully.`;
+      // Use the showToast utility for consistency
       showToast('success', message);
-    });
-    // Clean up the subscription when the component unmounts
+    };
+
+    const unsubscribe = InvoiceGenerationEvents.subscribe(handleInvoiceGenerated);
+    
     return unsubscribe;
   }, []);
+  
   return null;
 } 

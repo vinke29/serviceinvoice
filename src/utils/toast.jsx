@@ -24,5 +24,20 @@ export function showToast(type, message) {
       </svg>
     ),
   };
-  toast[type](message, { icon: icons[type] });
+  
+  const toastIcon = icons[type] || false;
+
+  const options = {
+    icon: toastIcon,
+    position: "top-center",
+    autoClose: 3000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+    className: `toast-${type}`,
+  };
+  
+  toast[type](message, options);
 } 

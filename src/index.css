@@ -4,8 +4,8 @@
 
 @layer base {
   body {
-    @apply bg-secondary-50 text-secondary-900 antialiased;
-    background-color: #3b82f6; /* Tailwind blue-500 */
+    @apply text-secondary-900 antialiased;
+    background-color: #f8fafc; /* Tailwind secondary-50 */
   }
 }
 

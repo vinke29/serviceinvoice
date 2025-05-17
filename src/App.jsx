@@ -277,7 +277,7 @@ function App() {
         closeOnClick
         rtl={false}
         pauseOnFocusLoss={false}
-        draggable={false}
+        draggable={true}
         pauseOnHover
         theme="light"
         className="toast-container"
