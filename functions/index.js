@@ -124,7 +124,13 @@ exports.sendInvoiceEmail = functions.firestore
                       <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
                           <td valign="top" width="60" style="padding-right:20px;">
-                            <div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>
+                            ${{
+                              logoHtml: user.logo
+                                ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+                                : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
+                                    ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
+                                  </div>`
+                            }.logoHtml}
                           </td>
                           <td valign="top">
                             <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
