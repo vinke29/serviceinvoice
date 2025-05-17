@@ -48,7 +48,7 @@ export default function Login({ onAuth }) {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
       <div className="w-full max-w-5xl flex flex-col lg:flex-row items-end justify-between mx-auto px-4 lg:px-8 py-8">
         {/* Left side - Content and illustration */}
-        <div className="flex-1 max-w-xl flex flex-col justify-center px-0 lg:px-8 mb-8 lg:mb-8">
+        <div className="flex-1 max-w-xl flex flex-col justify-center px-0 lg:px-8 self-end">
           {/* Logo */}
           <div className="mb-10">
             <div className="flex items-center">
