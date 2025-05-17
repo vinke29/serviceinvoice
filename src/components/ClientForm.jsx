@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns'
+import StatusChangeConfirmModal from './StatusChangeConfirmModal'
 
 // Helper function to normalize dates to YYYY-MM-DD format without timezone issues
 const formatDateString = (date) => {
@@ -13,7 +14,7 @@ const formatDateString = (date) => {
   return format(dateObj, 'yyyy-MM-dd');
 };
 
-function ClientForm({ client, onSubmit, onCancel }) {
+function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,6 +29,9 @@ function ClientForm({ client, onSubmit, onCancel }) {
   
   // Remove all first/next invoice and onHold related state
   const today = new Date().toISOString().slice(0, 10)
+
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [pendingData, setPendingData] = useState(null)
 
   useEffect(() => {
     if (client) {
@@ -51,6 +55,11 @@ function ClientForm({ client, onSubmit, onCancel }) {
       ...formData,
       customerSince: formData.customerSince ? formatDateString(formData.customerSince) : ''
     };
+    if (['on_hold', 'cancelled'].includes(formData.status)) {
+      setPendingData(formattedData)
+      setShowStatusModal(true)
+      return
+    }
     onSubmit(formattedData)
   }
 
@@ -58,90 +67,105 @@ function ClientForm({ client, onSubmit, onCancel }) {
   const isNewClient = !client || !client.id
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Name</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
+    <>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Name</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
+          <textarea
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            rows="3"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Customer Since</label>
+          <input
+            type="date"
+            value={formData.customerSince || ''}
+            readOnly
+            disabled
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg bg-gray-50 text-secondary-500"
+          />
+          <div className="text-xs text-secondary-500 mt-1">Set automatically when the client is created.</div>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
+          <select
+            value={formData.status}
+            onChange={e => setFormData({ ...formData, status: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          >
+            <option value="">Select status</option>
+            <option value="active">Active</option>
+            <option value="on_hold">On Hold</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="delinquent">Delinquent</option>
+          </select>
+        </div>
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          >
+            {client ? 'Update Client' : 'Add Client'}
+          </button>
+        </div>
+      </form>
+      {showStatusModal && (
+        <StatusChangeConfirmModal
+          isOpen={showStatusModal}
+          onClose={() => setShowStatusModal(false)}
+          onConfirm={() => {
+            setShowStatusModal(false)
+            if (pendingData) onSubmit(pendingData)
+          }}
+          clientName={formData.name}
+          action={formData.status === 'cancelled' ? 'cancel' : 'hold'}
+          scheduledInvoicesCount={scheduledInvoicesCount}
         />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
-        <input
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
-        <input
-          type="tel"
-          value={formData.phone}
-          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
-        <textarea
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          rows="3"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Customer Since</label>
-        <input
-          type="date"
-          value={formData.customerSince || ''}
-          readOnly
-          disabled
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg bg-secondary-50 text-secondary-500"
-        />
-        <div className="text-xs text-secondary-500 mt-1">Set automatically when the client is created.</div>
-      </div>
-      
-      <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
-        <select
-          value={formData.status}
-          onChange={e => setFormData({ ...formData, status: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
-        >
-          <option value="">Select status</option>
-          <option value="active">Active</option>
-          <option value="on_hold">On Hold</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="delinquent">Delinquent</option>
-        </select>
-      </div>
-      <div className="flex justify-end space-x-3 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-        >
-          {client ? 'Update Client' : 'Add Client'}
-        </button>
-      </div>
-    </form>
+      )}
+    </>
   )
 }
 

@@ -9,6 +9,7 @@ import UserProfile from './components/UserProfile'
 import Login from './components/Login'
 import OnboardingFlow from './components/OnboardingFlow'
 import InvoiceGeneratedNotification from './components/InvoiceGeneratedNotification'
+import StatusChangeModalDemo from './components/StatusChangeModalDemo'
 import { auth } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { invoiceGenerationService } from './services/invoiceGenerationService'
@@ -280,15 +281,12 @@ function App() {
         pauseOnHover
         theme="light"
         className="toast-container"
-        toastClassName="toast-item"
-        bodyClassName="toast-body"
-        progressClassName="toast-progress"
         icon={true}
       />
       {showOnboarding ? (
         <OnboardingFlow onComplete={handleOnboardingComplete} />
       ) : (
-        <div className="app-container min-h-screen bg-secondary-50 overflow-x-hidden">
+        <div className="app-container min-h-screen bg-gray-50 overflow-x-hidden">
           <Navigation user={user} />
           <main className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 overflow-y-auto">
             <Routes>
@@ -298,6 +296,7 @@ function App() {
               <Route path="/reminders" element={<ReminderOpsDashboard />} />
               <Route path="/ai-agent" element={<AIAgent />} />
               <Route path="/profile" element={<UserProfile key={user.uid} />} />
+              <Route path="/modal-demo" element={<StatusChangeModalDemo />} />
             </Routes>
           </main>
           <InvoiceGeneratedNotification />

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
-import { toast } from 'react-toastify';
+import { showToast } from '../utils/toast.jsx';
 
 function UserProfile() {
   const [loading, setLoading] = useState(true);
@@ -132,22 +132,10 @@ function UserProfile() {
       // Save the logo URL to Firestore immediately
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, { logo: downloadURL }, { merge: true });
-      toast.success('Logo uploaded and saved successfully!', {
-        icon: () => (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-          </svg>
-        )
-      });
+      showToast('success', 'Logo uploaded and saved successfully!');
     } catch (error) {
       console.error('Error uploading logo:', error);
-      toast.error('Failed to upload logo. Please try again.', {
-        icon: () => (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        )
-      });
+      showToast('error', 'Failed to upload logo. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -173,22 +161,10 @@ function UserProfile() {
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, dataToSave, { merge: true });
       
-      toast.success('Your profile has been updated successfully!', {
-        icon: () => (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-primary-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-        )
-      });
+      showToast('success', 'Your profile has been updated successfully!');
     } catch (error) {
       console.error('Error saving user profile:', error);
-      toast.error('Unable to save profile changes. Please try again.', {
-        icon: () => (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        )
-      });
+      showToast('error', 'Unable to save profile changes. Please try again.');
     } finally {
       setSaving(false);
     }
