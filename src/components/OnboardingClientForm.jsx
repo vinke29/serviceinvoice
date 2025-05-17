@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api'
+
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, setFormData }) {
   // Use controlled state from parent if provided, else fallback to internal state
@@ -8,11 +11,40 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: '',
     customerSince: new Date().toISOString().slice(0, 10),
     status: 'Active'
   })
   const data = formData || internalFormData;
   const setData = setFormData || internalSetFormData;
+
+  const autocompleteRef = useRef(null);
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (!place.address_components) return;
+      const getComponent = (type) => {
+        const comp = place.address_components.find(c => c.types.includes(type));
+        return comp ? comp.long_name : '';
+      };
+      setData(f => ({
+        ...f,
+        address: getComponent('street_number') + ' ' + getComponent('route'),
+        city: getComponent('locality') || getComponent('sublocality') || getComponent('postal_town'),
+        state: getComponent('administrative_area_level_1'),
+        zip: getComponent('postal_code'),
+        country: getComponent('country'),
+      }));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -75,15 +107,75 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
           placeholder="(123) 456-7890"
         />
       </div>
+      <div className="col-span-2">
+        <label className="block text-sm font-medium text-secondary-700 mb-1">Street Address</label>
+        {isLoaded ? (
+          <Autocomplete
+            onLoad={ac => (autocompleteRef.current = ac)}
+            onPlaceChanged={onPlaceChanged}
+          >
+            <input
+              type="text"
+              value={data.address}
+              onChange={(e) => setData({ ...data, address: e.target.value })}
+              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              required
+              placeholder="123 Main St"
+            />
+          </Autocomplete>
+        ) : (
+          <input
+            type="text"
+            value={data.address}
+            onChange={(e) => setData({ ...data, address: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+            placeholder="123 Main St"
+          />
+        )}
+      </div>
       <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
-        <textarea
-          value={data.address}
-          onChange={(e) => setData({ ...data, address: e.target.value })}
+        <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+        <input
+          type="text"
+          value={data.city}
+          onChange={(e) => setData({ ...data, city: e.target.value })}
           className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          rows="3"
           required
-          placeholder="123 Main St, Anytown, CA 12345"
+          placeholder="Anytown"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">State / Province</label>
+        <input
+          type="text"
+          value={data.state}
+          onChange={(e) => setData({ ...data, state: e.target.value })}
+          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          required
+          placeholder="CA"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">ZIP / Postal Code</label>
+        <input
+          type="text"
+          value={data.zip}
+          onChange={(e) => setData({ ...data, zip: e.target.value })}
+          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          required
+          placeholder="12345"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+        <input
+          type="text"
+          value={data.country}
+          onChange={(e) => setData({ ...data, country: e.target.value })}
+          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          required
+          placeholder="United States"
         />
       </div>
       {/* Action row: use renderActions if provided, else default */}

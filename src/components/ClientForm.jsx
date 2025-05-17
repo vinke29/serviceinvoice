@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns'
 import StatusChangeConfirmModal from './StatusChangeConfirmModal'
 import { showToast } from '../utils/toast.jsx'
+import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api'
+
+const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 // Helper function to normalize dates to YYYY-MM-DD format without timezone issues
 const formatDateString = (date) => {
@@ -22,6 +25,10 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zip: '',
+    country: '',
     customerSince: '',
     lastInvoiced: '',
     lastPaid: '',
@@ -34,6 +41,31 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
 
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [pendingData, setPendingData] = useState(null)
+
+  const autocompleteRef = useRef(null);
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: GOOGLE_MAPS_LIBRARIES,
+  });
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (!place.address_components) return;
+      const getComponent = (type) => {
+        const comp = place.address_components.find(c => c.types.includes(type));
+        return comp ? comp.long_name : '';
+      };
+      setFormData(f => ({
+        ...f,
+        address: getComponent('street_number') + ' ' + getComponent('route'),
+        city: getComponent('locality') || getComponent('sublocality') || getComponent('postal_town'),
+        state: getComponent('administrative_area_level_1'),
+        zip: getComponent('postal_code'),
+        country: getComponent('country'),
+      }));
+    }
+  };
 
   useEffect(() => {
     if (client) {
@@ -132,13 +164,68 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
             required
           />
         </div>
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Street Address</label>
+          {isLoaded ? (
+            <Autocomplete
+              onLoad={ac => (autocompleteRef.current = ac)}
+              onPlaceChanged={onPlaceChanged}
+            >
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                required
+              />
+            </Autocomplete>
+          ) : (
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              required
+            />
+          )}
+        </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
-          <textarea
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+          <input
+            type="text"
+            value={formData.city}
+            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
             className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            rows="3"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">State / Province</label>
+          <input
+            type="text"
+            value={formData.state}
+            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">ZIP / Postal Code</label>
+          <input
+            type="text"
+            value={formData.zip}
+            onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+          <input
+            type="text"
+            value={formData.country}
+            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             required
           />
         </div>

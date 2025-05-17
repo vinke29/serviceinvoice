@@ -166,7 +166,15 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                     </div>
                     <div>
                       <div className="text-sm text-secondary-500">Address</div>
-                      <div className="text-secondary-900">{displayData.address || '-'}</div>
+                      <div className="text-secondary-900">
+                        {displayData.address ? (
+                          <>
+                            <div>{displayData.address}</div>
+                            <div>{displayData.city}, {displayData.state} {displayData.zip}</div>
+                            <div>{displayData.country}</div>
+                          </>
+                        ) : '-'}
+                      </div>
                     </div>
                   </div>
                 </div>
