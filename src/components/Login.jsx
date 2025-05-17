@@ -45,8 +45,8 @@ export default function Login({ onAuth }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
-      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-between mx-auto px-4 lg:px-8 py-8">
+    <div className="min-h-screen flex items-end justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
+      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-end justify-between mx-auto px-4 lg:px-8 py-8">
         {/* Left side - Content and illustration */}
         <div className="flex-1 max-w-xl flex flex-col justify-center px-0 lg:px-8">
           {/* Logo */}
@@ -67,7 +67,7 @@ export default function Login({ onAuth }) {
               Your AI-powered assistant for invoices, reminders, and payment tracking.
             </p>
             {/* Illustration and caption */}
-            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-5 shadow-md mb-8">
+            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-5 shadow-md mb-0">
               <img 
                 src={illustrationUrl} 
                 alt="Invoice assistant illustration" 
