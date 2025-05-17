@@ -12,7 +12,12 @@ import InvoiceGeneratedNotification from './components/InvoiceGeneratedNotificat
 import { auth } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { invoiceGenerationService } from './services/invoiceGenerationService'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
+
+// Custom toast styles - will override default react-toastify styling
+import './toast.css'
 
 // Navigation component with active link highlighting
 function Navigation({ user }) {
@@ -263,6 +268,23 @@ function App() {
 
   return (
     <Router>
+      <ToastContainer 
+        position="top-center" 
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false}
+        draggable={false}
+        pauseOnHover
+        theme="light"
+        className="toast-container"
+        toastClassName="toast-item"
+        bodyClassName="toast-body"
+        progressClassName="toast-progress"
+        icon={true}
+      />
       {showOnboarding ? (
         <OnboardingFlow onComplete={handleOnboardingComplete} />
       ) : (

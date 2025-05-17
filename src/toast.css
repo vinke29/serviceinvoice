@@ -1,0 +1,110 @@
+/* Custom toast styles to match app's aesthetic */
+
+/* Container positioning */
+.toast-container {
+  padding: 15px;
+  width: auto !important;
+}
+
+/* Base toast styling */
+.Toastify__toast {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+}
+
+/* Success toast (green) */
+.Toastify__toast--success {
+  background-color: #f0fdf4; /* primary-50 */
+  color: #15803d; /* primary-700 */
+  border-color: #86efac; /* primary-300 */
+}
+
+.Toastify__toast--success .Toastify__toast-icon svg {
+  fill: #16a34a; /* primary-600 */
+}
+
+.Toastify__toast--success .Toastify__progress-bar {
+  background-color: #22c55e; /* primary-500 */
+}
+
+/* Error toast (red) */
+.Toastify__toast--error {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.Toastify__toast--error .Toastify__progress-bar {
+  background-color: #ef4444;
+}
+
+/* Info toast (blue) */
+.Toastify__toast--info {
+  background-color: #eff6ff; /* blue-50 */
+  color: #1d4ed8; /* blue-700 */
+  border-color: #93c5fd; /* blue-300 */
+}
+
+.Toastify__toast--info .Toastify__progress-bar {
+  background-color: #3b82f6; /* blue-500 */
+}
+
+/* Warning toast (amber) */
+.Toastify__toast--warning {
+  background-color: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.Toastify__toast--warning .Toastify__progress-bar {
+  background-color: #f59e0b;
+}
+
+/* Close button */
+.Toastify__close-button {
+  color: currentColor;
+  opacity: 0.6;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+/* Progress bar */
+.Toastify__progress-bar {
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+}
+
+/* Animation */
+.Toastify__toast--animate {
+  animation-duration: 0.35s;
+}
+
+/* Add a subtle icon animation */
+.Toastify__toast-icon {
+  margin-right: 12px;
+}
+
+/* Mobile optimizations */
+@media only screen and (max-width: 480px) {
+  .Toastify__toast-container {
+    width: 100% !important;
+    padding: 0;
+    left: 0;
+    margin: 0;
+  }
+  
+  .Toastify__toast {
+    margin-bottom: 0;
+    border-radius: 0;
+  }
+} 
