@@ -155,7 +155,7 @@ export default function Login({ onAuth }) {
           </div>
           {/* Free forever message below the form */}
           {isSignup && (
-            <div className="mt-8 pb-6 text-center text-sm text-gray-500">
+            <div className="mt-8 pb-10 text-center text-sm text-gray-500">
               Free forever for up to 3 clients
             </div>
           )}
