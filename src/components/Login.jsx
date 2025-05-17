@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-import personWaveImage from '../assets/person-wave.png';
+import illustrationUrl from '../assets/invoice-illustration';
 
 export default function Login({ onAuth }) {
   const [isSignup, setIsSignup] = useState(true);
@@ -69,9 +69,9 @@ export default function Login({ onAuth }) {
             {/* Illustration and caption */}
             <div className="flex flex-col items-center bg-white/60 rounded-2xl p-6 shadow-md mb-8">
               <img 
-                src={personWaveImage} 
+                src={illustrationUrl} 
                 alt="Invoice assistant illustration" 
-                className="w-full max-w-xs h-auto object-contain mb-4"
+                className="w-full max-w-md h-auto object-contain mb-4"
               />
               <p className="text-base text-blue-900 font-medium text-center">
                 Meet Billie, your smart invoice assistant to manage your business.
