@@ -202,21 +202,23 @@ function UserProfile() {
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
             <input
               type="text"
-              name="fullName"
-              value={`${formData.firstName} ${formData.lastName}`}
-              onChange={(e) => {
-                const parts = e.target.value.split(' ');
-                const firstName = parts[0] || '';
-                const lastName = parts.slice(1).join(' ') || '';
-                setFormData({
-                  ...formData,
-                  firstName,
-                  lastName
-                });
-              }}
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
