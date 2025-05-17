@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns'
 import StatusChangeConfirmModal from './StatusChangeConfirmModal'
+import { showToast } from '../utils/toast.jsx'
 
 // Helper function to normalize dates to YYYY-MM-DD format without timezone issues
 const formatDateString = (date) => {
@@ -28,8 +29,8 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
     status: 'active',
   })
   
-  // Remove all first/next invoice and onHold related state
-  const today = new Date().toISOString().slice(0, 10)
+  // Track the original status
+  const [originalStatus, setOriginalStatus] = useState('active');
 
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [pendingData, setPendingData] = useState(null)
@@ -45,6 +46,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
         lastName = nameParts.slice(1).join(' ') || '';
       }
       setFormData({ ...otherFields, firstName, lastName });
+      setOriginalStatus(otherFields.status || 'active');
     } else {
       // Set customerSince to today on creation and status to active
       setFormData(f => ({ 
@@ -52,6 +54,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
         customerSince: new Date().toISOString().slice(0, 10),
         status: 'active'
       }))
+      setOriginalStatus('active');
     }
   }, [client])
 
@@ -69,12 +72,14 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
     delete formattedData.firstName;
     delete formattedData.lastName;
 
-    if (['on_hold', 'cancelled'].includes(formData.status)) {
+    // Only show modal if status is being changed to on_hold or cancelled
+    if ((formData.status === 'on_hold' || formData.status === 'cancelled') && formData.status !== originalStatus) {
       setPendingData(formattedData)
       setShowStatusModal(true)
       return
     }
     onSubmit(formattedData)
+    showToast('success', 'Client updated successfully!')
   }
 
   // Determine if this is a new client (no id)
@@ -186,7 +191,10 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
           onClose={() => setShowStatusModal(false)}
           onConfirm={() => {
             setShowStatusModal(false)
-            if (pendingData) onSubmit(pendingData)
+            if (pendingData) {
+              onSubmit(pendingData)
+              showToast('success', 'Client updated successfully!')
+            }
           }}
           clientName={`${formData.firstName} ${formData.lastName}`.trim()}
           action={formData.status === 'cancelled' ? 'cancel' : 'hold'}
