@@ -67,14 +67,14 @@ export default function Login({ onAuth }) {
               Your AI-powered assistant for invoices, reminders, and payment tracking.
             </p>
             {/* Illustration and caption */}
-            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-6 shadow-md mb-8">
+            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-5 shadow-md mb-8">
               <img 
                 src={illustrationUrl} 
                 alt="Invoice assistant illustration" 
-                className="w-full max-w-md h-auto object-contain mb-4"
+                className="w-full max-w-sm h-auto object-contain mb-2" 
               />
-              <p className="text-base text-blue-900 font-medium text-center">
-                Meet Billie, your smart invoice assistant to manage your business.
+              <p className="text-sm text-blue-900 font-medium text-center">
+                Meet Billie, your smart invoice assistant
               </p>
             </div>
           </div>
