@@ -29,6 +29,9 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
   
   console.log('Client ID:', client.id, 'Active Invoices found:', clientInvoices.length, 'Total invoices:', invoices.length)
 
+  // Calculate scheduled invoices count for this client
+  const scheduledInvoicesCount = invoices.filter(inv => inv.clientId === client.id && inv.status === 'scheduled').length;
+
   const clientPayments = payments.filter(pay => pay.clientId === client.id)
 
   const handleInvoiceClick = (invoice) => {
@@ -145,7 +148,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
               <div className="space-y-6">
                 {/* Basic Info Card */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Basic Information</h3>
                   </div>
                   <div className="p-4 space-y-4">
@@ -170,7 +173,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
 
                 {/* Account Status Card */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Account Status</h3>
                   </div>
                   <div className="p-4 space-y-4">
@@ -208,7 +211,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
               <div className="space-y-6">
                 {/* Billing Configuration Card */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Billing Configuration</h3>
                   </div>
                   <div className="p-4 space-y-4">
@@ -243,7 +246,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
 
                 {/* Billing Schedule Card */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Billing Schedule</h3>
                   </div>
                   <div className="p-4 space-y-4">
@@ -268,13 +271,13 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
               <div className="space-y-6">
                 {/* Invoices Table */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Invoice History</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-secondary-200 bg-secondary-50">
+                        <tr className="border-b border-secondary-200 bg-gray-50">
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Invoice #</th>
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Date</th>
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Amount</th>
@@ -293,7 +296,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                           clientInvoices.map(inv => (
                             <tr 
                               key={inv.id} 
-                              className="border-b border-secondary-100 hover:bg-secondary-50 cursor-pointer" 
+                              className="border-b border-secondary-100 hover:bg-gray-50 cursor-pointer" 
                               onClick={() => handleInvoiceClick(inv)}
                             >
                               <td className="py-2 px-3 font-medium text-secondary-900">
@@ -326,13 +329,13 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
 
                 {/* Payments Table */}
                 <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-secondary-50 border-b border-secondary-200">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
                     <h3 className="text-sm font-semibold text-secondary-800">Payment History</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-secondary-200 bg-secondary-50">
+                        <tr className="border-b border-secondary-200 bg-gray-50">
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Date</th>
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Amount</th>
                           <th className="py-2 px-3 text-left font-medium text-secondary-600">Method</th>
@@ -386,6 +389,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
             client={displayData}
             onSubmit={handleSave}
             onCancel={() => setEditMode(false)}
+            scheduledInvoicesCount={scheduledInvoicesCount}
           />
         )}
       </div>

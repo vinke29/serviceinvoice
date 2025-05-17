@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import illustrationUrl from '../assets/invoice-illustration';
 
 export default function Login({ onAuth }) {
   const [isSignup, setIsSignup] = useState(true);
@@ -45,9 +46,9 @@ export default function Login({ onAuth }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
-      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-between mx-auto px-4 lg:px-8 py-8">
+      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-end justify-between mx-auto px-4 lg:px-8 py-8">
         {/* Left side - Content and illustration */}
-        <div className="flex-1 max-w-xl flex flex-col justify-center px-0 lg:px-8">
+        <div className="flex-1 max-w-xl flex flex-col justify-center px-0 lg:px-8 self-end">
           {/* Logo */}
           <div className="mb-10">
             <div className="flex items-center">
@@ -66,20 +67,20 @@ export default function Login({ onAuth }) {
               Your AI-powered assistant for invoices, reminders, and payment tracking.
             </p>
             {/* Illustration and caption */}
-            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-6 shadow-md mb-8">
+            <div className="flex flex-col items-center bg-white/60 rounded-2xl p-5 shadow-md mb-0">
               <img 
-                src="/images/invoice-illustration.png" 
+                src={illustrationUrl} 
                 alt="Invoice assistant illustration" 
-                className="w-full max-w-xs h-auto object-contain mb-4"
+                className="w-full max-w-sm h-auto object-contain mb-2" 
               />
-              <p className="text-base text-blue-900 font-medium text-center">
-                Meet Billie, your smart invoice assistant to manage your business.
+              <p className="text-sm text-blue-900 font-medium text-center">
+                Meet Billie, your smart invoice assistant
               </p>
             </div>
           </div>
         </div>
         {/* Right side - Form */}
-        <div className="w-full max-w-md lg:w-[400px] bg-white rounded-2xl flex flex-col items-center justify-center shadow-2xl px-8 py-12 min-h-[480px]">
+        <div className="w-full max-w-md lg:w-[400px] bg-white rounded-2xl flex flex-col items-center justify-center shadow-2xl px-8 py-12 min-h-[540px]">
           <div className={`w-full max-w-md transition-all duration-500 ${animation}`}> 
             <div className="mb-8">
               <h2 className="text-3xl font-extrabold text-blue-900 mb-2">
@@ -154,7 +155,7 @@ export default function Login({ onAuth }) {
           </div>
           {/* Free forever message below the form */}
           {isSignup && (
-            <div className="mt-8 text-center text-sm text-gray-500">
+            <div className="mt-8 pb-10 text-center text-sm text-gray-500">
               Free forever for up to 3 clients
             </div>
           )}

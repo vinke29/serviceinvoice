@@ -8,7 +8,6 @@ module.exports = {
     "eslint:recommended",
   ],
   rules: {
-    "no-unused-vars": "warn",
-    "no-console": "off",
+    "quotes": ["error", "single", { "allowTemplateLiterals": true }],
   },
 }; 

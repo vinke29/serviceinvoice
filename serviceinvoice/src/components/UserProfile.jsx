@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
+import { showToast } from '../utils/toast.jsx';
 
 function UserProfile() {
   const [loading, setLoading] = useState(true);
@@ -118,25 +119,23 @@ function UserProfile() {
 
       // Create a storage reference
       const logoRef = ref(storage, `users/${user.uid}/logo`);
-      
       // Upload the file to Firebase Storage (will overwrite if exists)
-      const snapshot = await uploadBytes(logoRef, file);
-      console.log('Uploaded logo to Storage:', snapshot);
-      
+      await uploadBytes(logoRef, file);
       // Get the download URL
       const downloadURL = await getDownloadURL(logoRef);
       console.log('Logo download URL:', downloadURL);
-      
       // Update form data with the URL
       setFormData({
         ...formData,
         logo: downloadURL
       });
-      
-      alert('Logo uploaded successfully!');
+      // Save the logo URL to Firestore immediately
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, { logo: downloadURL }, { merge: true });
+      showToast('success', 'Logo uploaded and saved successfully!');
     } catch (error) {
       console.error('Error uploading logo:', error);
-      alert('Failed to upload logo. Please try again.');
+      showToast('error', 'Failed to upload logo. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -162,10 +161,10 @@ function UserProfile() {
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, dataToSave, { merge: true });
       
-      alert('Profile updated successfully!');
+      showToast('success', 'Your profile has been updated successfully!');
     } catch (error) {
       console.error('Error saving user profile:', error);
-      alert('Failed to update profile. Please try again.');
+      showToast('error', 'Unable to save profile changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -203,21 +202,23 @@ function UserProfile() {
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
             <input
               type="text"
-              name="fullName"
-              value={`${formData.firstName} ${formData.lastName}`}
-              onChange={(e) => {
-                const parts = e.target.value.split(' ');
-                const firstName = parts[0] || '';
-                const lastName = parts.slice(1).join(' ') || '';
-                setFormData({
-                  ...formData,
-                  firstName,
-                  lastName
-                });
-              }}
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>

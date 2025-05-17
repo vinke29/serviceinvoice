@@ -96,6 +96,9 @@ function InvoiceCard({ invoice }) {
 }
 
 function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
+  // Filter only active clients (case-insensitive comparison)
+  const activeClients = clients.filter(client => client.status.toLowerCase() === 'active');
+
   // Create today's date in local timezone
   const today = new Date();
   const localDateString = today.getFullYear() + '-' + 
@@ -107,12 +110,12 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     clientName: '',
     amount: '',
     description: '',
-    date: localDateString, // Use local date string instead of toISOString()
+    date: localDateString,
     dueDate: '',
     status: 'pending',
-    billingFrequency: 'one-time', // Default to one-time
-    isRecurring: false, // Whether this is a recurring invoice
-    customized: false // Added for editing scheduled invoices
+    billingFrequency: 'one-time',
+    isRecurring: false,
+    customized: false
   })
   const [agentConfig, setAgentConfig] = useState(null)
   const [isFutureInvoice, setIsFutureInvoice] = useState(false)
@@ -123,7 +126,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
       const user = auth.currentUser
       if (user) {
         const config = await getAgentConfig(user.uid)
-        setAgentConfig(config || { netDays: 7 }) // Default to 7 days if not set
+        setAgentConfig(config || { netDays: 7 })
       }
     }
     fetchAgentConfig()
@@ -138,7 +141,6 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
   // Calculate due date when invoice date or client changes
   useEffect(() => {
     if (formData.date && agentConfig) {
-      // Calculate due date based on current date and net days
       const invoiceDate = new Date(formData.date)
       let dueDate;
       if (agentConfig.netDays === 0) {
@@ -150,18 +152,14 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     }
   }, [formData.date, agentConfig])
   
-  // Check if invoice date is in the future (tomorrow or later)
   useEffect(() => {
     if (formData.date) {
-      // Check if the invoice date is in the future using our helper
       const isInFuture = isDateInFuture(formData.date);
       setIsFutureInvoice(isInFuture);
       
-      // Automatically set status to 'scheduled' for future dates
       if (isInFuture && formData.status !== 'scheduled') {
         setFormData(prev => ({ ...prev, status: 'scheduled' }));
       } else if (!isInFuture && formData.status === 'scheduled') {
-        // If date is changed from future to today or past, update status to pending
         setFormData(prev => ({ ...prev, status: 'pending' }));
       }
     }
@@ -170,20 +168,15 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    // Find the client name from the selected client ID
-    const selectedClient = clients.find(c => c.id === formData.clientId)
-    
-    // Add client name and ensure clientId is set to the invoice data
+    const selectedClient = clients.find(c => c.id === formData.clientId);
     const finalData = {
       ...formData,
-      clientId: formData.clientId, // Ensure this is explicitly set
-      clientName: selectedClient ? selectedClient.name : '',
-      // Add recurring or one-time flag based on billing frequency
+      clientId: formData.clientId,
+      clientName: selectedClient.name,
       isRecurring: formData.billingFrequency !== 'one-time',
-      customized: false // Reset customized flag for new invoices
+      customized: false
     }
     
-    console.log('Submitting invoice with client:', finalData.clientId, finalData.clientName)
     onSubmit(finalData)
   }
   
@@ -191,14 +184,11 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     const clientId = e.target.value
     const selectedClient = clients.find(c => c.id === clientId)
     
-    // Only update the amount if it's empty or not set by user
-    const currentAmount = formData.amount && formData.amount !== '' ? formData.amount : ''
-    
     setFormData({ 
       ...formData, 
-      clientId, // Set the clientId
-      clientName: selectedClient ? selectedClient.name : '', // Also store the client name
-      amount: currentAmount
+      clientId,
+      clientName: selectedClient ? selectedClient.name : '',
+      amount: formData.amount && formData.amount !== '' ? formData.amount : ''
     })
   }
 
@@ -223,12 +213,21 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           required
         >
           <option value="">Select a client</option>
-          {clients.map(client => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
+          {activeClients.length > 0 ? (
+            activeClients.map(client => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))
+          ) : (
+            <option value="" disabled>No active clients available for invoicing</option>
+          )}
         </select>
+        {activeClients.length === 0 && (
+          <p className="mt-2 text-sm text-secondary-600">
+            Only active clients are eligible for invoicing. Please activate a client or add a new client to proceed.
+          </p>
+        )}
       </div>
       
       <div className="grid grid-cols-2 gap-4">
