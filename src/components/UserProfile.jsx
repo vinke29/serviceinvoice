@@ -118,22 +118,20 @@ function UserProfile() {
 
       // Create a storage reference
       const logoRef = ref(storage, `users/${user.uid}/logo`);
-      
       // Upload the file to Firebase Storage (will overwrite if exists)
-      const snapshot = await uploadBytes(logoRef, file);
-      console.log('Uploaded logo to Storage:', snapshot);
-      
+      await uploadBytes(logoRef, file);
       // Get the download URL
       const downloadURL = await getDownloadURL(logoRef);
       console.log('Logo download URL:', downloadURL);
-      
       // Update form data with the URL
       setFormData({
         ...formData,
         logo: downloadURL
       });
-      
-      alert('Logo uploaded successfully!');
+      // Save the logo URL to Firestore immediately
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, { logo: downloadURL }, { merge: true });
+      alert('Logo uploaded and saved successfully!');
     } catch (error) {
       console.error('Error uploading logo:', error);
       alert('Failed to upload logo. Please try again.');
