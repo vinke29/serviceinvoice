@@ -80,7 +80,7 @@ export default function Login({ onAuth }) {
           </div>
         </div>
         {/* Right side - Form */}
-        <div className="w-full max-w-md lg:w-[400px] bg-white rounded-2xl flex flex-col items-center justify-center shadow-2xl px-8 py-12 min-h-[520px]">
+        <div className="w-full max-w-md lg:w-[400px] bg-white rounded-2xl flex flex-col items-center justify-center shadow-2xl px-8 py-12 min-h-[540px]">
           <div className={`w-full max-w-md transition-all duration-500 ${animation}`}> 
             <div className="mb-8">
               <h2 className="text-3xl font-extrabold text-blue-900 mb-2">
@@ -155,7 +155,7 @@ export default function Login({ onAuth }) {
           </div>
           {/* Free forever message below the form */}
           {isSignup && (
-            <div className="mt-8 pb-4 text-center text-sm text-gray-500">
+            <div className="mt-8 pb-6 text-center text-sm text-gray-500">
               Free forever for up to 3 clients
             </div>
           )}
