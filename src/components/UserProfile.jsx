@@ -4,6 +4,8 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { auth, db, storage } from '../firebase';
 import { showToast } from '../utils/toast.jsx';
 import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 // Google Maps JS API loader for PlaceAutocompleteElement
 function loadGoogleMapsScript(apiKey) {
@@ -294,15 +296,19 @@ function UserProfile() {
             />
           </div>
           
+          {/* Phone Number */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+            <div className="flex items-center bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 transition-all">
+              <PhoneInput
+                international
+                defaultCountry="US"
+                value={formData.phone}
+                onChange={value => setFormData({ ...formData, phone: value })}
+                className="flex-1 border-none outline-none focus:ring-0"
+                inputComponent="input"
+              />
+            </div>
           </div>
 
           {/* Business Information */}
@@ -383,24 +389,36 @@ function UserProfile() {
                 onLoad={ac => (autocompleteRef.current = ac)}
                 onPlaceChanged={onPlaceChanged}
               >
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                    {/* Location SVG icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 10c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" /></svg>
+                  </span>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                    placeholder="Enter your street address..."
+                  />
+                </div>
+              </Autocomplete>
+            ) : (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                  {/* Location SVG icon */}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 10c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" /></svg>
+                </span>
                 <input
                   type="text"
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Start typing your address..."
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  placeholder="Enter your street address..."
                 />
-              </Autocomplete>
-            ) : (
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Start typing your address..."
-              />
+              </div>
             )}
           </div>
           
