@@ -8,6 +8,39 @@ admin.initializeApp();
 // Initialize SendGrid with API key from Firebase config
 sgMail.setApiKey(functions.config().sendgrid.key);
 
+// Create a new user document in Firestore when a user signs up
+exports.createUserDocument = functions.auth.user().onCreate(async (user) => {
+  try {
+    const { uid, email, displayName } = user;
+    console.log(`Creating new user document for: ${email} (${uid})`);
+    
+    // Create a new user document with default fields
+    await admin.firestore().collection('users').doc(uid).set({
+      email: email,
+      firstName: displayName ? displayName.split(' ')[0] : '',
+      lastName: displayName ? displayName.split(' ').slice(1).join(' ') : '',
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      companyName: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: '',
+      website: '',
+      taxId: '',
+      paymentInstructions: '',
+      logo: ''
+    });
+    
+    console.log(`Successfully created user document for: ${email}`);
+    return null;
+  } catch (error) {
+    console.error('Error creating user document:', error);
+    return null;
+  }
+});
+
 exports.sendInvoiceEmail = functions.firestore
   .document('users/{userId}/invoices/{invoiceId}')
   .onCreate(async (snap, context) => {
