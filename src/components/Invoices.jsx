@@ -12,6 +12,10 @@ import 'react-day-picker/dist/style.css';
 import clsx from 'clsx';
 import { getInvoices, addInvoice, updateInvoice, deleteInvoice, getClients, getAgentConfig, updateClient } from '../firebaseData';
 import { auth } from '../firebase';
+import { showToast } from '../utils/toast.jsx';
+import InvoiceGenerationService from '../services/invoiceGenerationService';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -519,6 +523,7 @@ function Invoices() {
   const [dateRange, setDateRange] = useState([undefined, undefined])
   const [invoiceDateRange, setInvoiceDateRange] = useState([undefined, undefined])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   const [scheduledInvoices, setScheduledInvoices] = useState([]);
   const [showScheduled, setShowScheduled] = useState(false);
   const [activeScheduleMonth, setActiveScheduleMonth] = useState('current');
@@ -573,7 +578,7 @@ function Invoices() {
   // Load invoices and clients from Firestore on mount
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      if (initialLoad) setLoading(true)
       const user = auth.currentUser
       if (user) {
         const [invoiceData, clientData, configData] = await Promise.all([
@@ -589,7 +594,10 @@ function Invoices() {
         setClients([])
         setAgentConfig(null)
       }
-      setLoading(false)
+      if (initialLoad) {
+        setLoading(false)
+        setInitialLoad(false)
+      }
     }
     fetchData()
     
@@ -1007,9 +1015,6 @@ function Invoices() {
       } catch (error) {
         console.error("Error creating invoice:", error);
         alert(`Failed to create invoice: ${error.message}`);
-      } finally {
-        // Complete any loading indicator that was present
-        setLoading(false);
       }
     }
     setShowForm(false)
@@ -1185,6 +1190,62 @@ function Invoices() {
     }
   }
 
+  // Add handler to send reminder email
+  async function handleSendReminder(invoice, setInvoices, setSelectedInvoice, e) {
+    if (e) e.stopPropagation(); // Prevent drawer from opening
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      // Find the client for this invoice
+      const client = clients.find(c => c.id === invoice.clientId);
+      // Fetch user profile data from Firestore
+      let userData = {};
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) userData = userDoc.data();
+      } catch {}
+      // Send the reminder email
+      const service = new InvoiceGenerationService();
+      await service.sendInvoiceEmail(invoice, client, userData, { isReminder: true });
+      // Add activity entry
+      const activityEntry = {
+        type: 'reminder',
+        message: 'Reminder email sent',
+        timestamp: new Date().toISOString(),
+        user: { id: user.uid, name: user.displayName || user.email }
+      };
+      // Update Firestore
+      const invoiceDocRef = doc(db, 'invoices', invoice.id);
+      await setDoc(invoiceDocRef, {
+        activity: [...(invoice.activity || []), activityEntry]
+      }, { merge: true });
+      // Update local state
+      setInvoices && setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, activity: [...(inv.activity || []), activityEntry] } : inv));
+      setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? { ...prev, activity: [...(prev.activity || []), activityEntry] } : prev);
+      showToast('success', 'Reminder email sent!');
+    } catch (error) {
+      showToast('error', 'Failed to send reminder.');
+      console.error('Send reminder error:', error);
+    }
+  }
+
+  // Add handler to mark invoice as paid
+  async function handleMarkPaid(invoice, setInvoices, setSelectedInvoice) {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const paidAt = new Date().toISOString();
+      await updateInvoice(user.uid, { ...invoice, status: 'paid', paidAt });
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, status: 'paid', paidAt } : inv));
+      setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? { ...prev, status: 'paid', paidAt } : prev);
+      showToast('success', 'Invoice marked as paid!');
+    } catch (error) {
+      showToast('error', 'Failed to mark as paid.');
+      console.error('Mark paid error:', error);
+    }
+  }
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1323,26 +1384,57 @@ function Invoices() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleEditInvoice(invoice); }}
-                        className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
-                        title="Edit"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
-                        className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
-                        title="Delete"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200" title="More Actions">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="19" cy="12" r="2" />
+                            <circle cx="5" cy="12" r="2" />
+                          </svg>
+                        </button>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Content className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
+                        <DropdownMenu.Item asChild>
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            onClick={() => handleEditInvoice(invoice)}
+                          >
+                            Edit
+                          </button>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item asChild>
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            onClick={() => handleDeleteInvoice(invoice)}
+                          >
+                            Delete
+                          </button>
+                        </DropdownMenu.Item>
+                        {(invoice.status === 'pending' || invoice.status === 'overdue') && (
+                          <>
+                            <DropdownMenu.Separator className="my-1 border-t border-secondary-100" />
+                            <DropdownMenu.Item
+                              onClick={e => handleSendReminder(invoice, setInvoices, setSelectedInvoice, e)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            >
+                              Send Reminder
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item asChild>
+                              <button
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleMarkPaid(invoice, setInvoices, setSelectedInvoice);
+                                }}
+                              >
+                                Mark Paid
+                              </button>
+                            </DropdownMenu.Item>
+                          </>
+                        )}
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Root>
                   </td>
                 </tr>
               ))}
