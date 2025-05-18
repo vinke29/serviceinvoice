@@ -418,4 +418,205 @@ exports.generateRecurringInvoices = functions.pubsub
       console.error('Error in generateRecurringInvoices:', error);
       throw error;
     }
-  }); 
+  });
+
+exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
+  }
+  try {
+    const { userId, invoiceId, clientId } = data;
+    if (!userId || !invoiceId || !clientId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
+    }
+
+    // Load invoice
+    const invoiceSnap = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
+    if (!invoiceSnap.exists) throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    const invoice = invoiceSnap.data();
+
+    // Load client
+    const clientSnap = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
+    if (!clientSnap.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
+    const client = clientSnap.data();
+
+    // Load user
+    const userSnap = await admin.firestore().collection('users').doc(userId).get();
+    if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+    const user = userSnap.data();
+
+    // Use the same template as invoice email, but tweak subject/body
+    const lineItems = invoice.lineItems || [{
+      description: invoice.description,
+      amount: invoice.amount,
+      quantity: 1,
+      rate: invoice.amount
+    }];
+    const subtotal = lineItems.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0);
+    const taxRate = invoice.taxRate || 0;
+    const taxAmount = (subtotal * taxRate / 100) || 0;
+    const total = subtotal + taxAmount;
+    const formatCurrency = (amount) => parseFloat(amount).toFixed(2);
+
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Reminder: Invoice #${invoice.invoiceNumber}</title>
+      </head>
+      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+                <tr>
+                  <td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                    <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">PAYMENT REMINDER</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:32px 40px 0 40px;">
+                    <div style="font-size:18px;color:#2c5282;font-weight:bold;margin-bottom:8px;">This is a friendly reminder that payment for the following invoice is due:</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 0 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="top" width="60" style="padding-right:20px;">
+                          ${user.logo
+                            ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+                            : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
+                                ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
+                              </div>`}
+                        </td>
+                        <td valign="top">
+                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
+                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:24px 40px 0 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:4px;">
+                      <tr>
+                        <td style="padding:16px 0;text-align:center;">
+                          <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                              <td style="width:33%;text-align:center;">
+                                <div style="font-size:13px;color:#666;">Date</div>
+                                <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.date}</div>
+                              </td>
+                              <td style="width:33%;text-align:center;">
+                                <div style="font-size:13px;color:#666;">Due Date</div>
+                                <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.dueDate}</div>
+                              </td>
+                              <td style="width:33%;text-align:center;">
+                                <div style="font-size:13px;color:#666;">Invoice #</div>
+                                <div style="font-size:16px;font-weight:bold;color:#2c5282;">${invoice.invoiceNumber}</div>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:24px 40px 0 40px;">
+                    <div style="font-size:15px;font-weight:bold;color:#2c5282;margin-bottom:8px;">BILL TO:</div>
+                    <div style="font-size:15px;color:#333;">${client.name}</div>
+                    <div style="font-size:13px;color:#333;">${client.address || ''}</div>
+                    <div style="font-size:13px;color:#333;">${client.email}</div>
+                    <div style="font-size:13px;color:#333;">${client.phone || ''}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:24px 40px 0 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                      <thead>
+                        <tr>
+                          <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Description</th>
+                          <th align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">${invoice.description}</td>
+                          <td align="right" style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">$${formatCurrency(invoice.amount)}</td>
+                        </tr>
+                        <tr>
+                          <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">Total:</td>
+                          <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">$${formatCurrency(invoice.amount)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+                ${user.paymentInstructions ? `
+                <tr>
+                  <td style="padding:0 40px 24px 40px;">
+                    <div style="margin-top:20px;text-align:center;color:#2c5282;font-size:15px;padding:10px;background:#e6f7ff;border-radius:5px;">
+                      ${user.paymentInstructions}
+                    </div>
+                  </td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding:32px 40px 32px 40px;border-top:1px solid #e2e8f0;text-align:center;background:#f8fafc;border-radius:0 0 8px 8px;">
+                    <div style="font-size:15px;color:#2c5282;margin-bottom:5px;font-weight:bold;">Thank you for your business!</div>
+                    <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const textContent = `
+PAYMENT REMINDER\n\n${user.companyName || user.name}\n${user.businessNumber ? `Business Number: ${user.businessNumber}` : ''}\n${user.address || ''}\n${user.phone || ''}\n${user.email}\n\nInvoice #: ${invoice.invoiceNumber}\nDate: ${invoice.date}\nDue Date: ${invoice.dueDate}\nBalance Due: USD $${formatCurrency(total)}\n\nBill To:\n${client.name}\n${client.address || ''}\n${client.city && client.state ? `${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}` : ''}\n${client.email}\n${client.phone || ''}\n\n${lineItems.map(item => `\nDescription: ${item.description}\nRate: $${formatCurrency(item.rate || item.amount)}\nQuantity: ${item.quantity || 1}\n${taxRate > 0 ? `Tax Rate: ${taxRate}%` : ''}\nAmount: $${formatCurrency(item.amount)}\n`).join('\n')}\n\nSubtotal: $${formatCurrency(subtotal)}\n${taxRate > 0 ? `Tax (${taxRate}%): $${formatCurrency(taxAmount)}` : ''}\nTotal: $${formatCurrency(total)}\n${invoice.paymentAmount ? `\nPayment: -$${formatCurrency(invoice.paymentAmount)}\nBalance Due: USD $${formatCurrency(total - invoice.paymentAmount)}\n` : ''}\n\n${user.paymentInstructions ? user.paymentInstructions : ''}\n${user.venmoUsername ? `Venmo: @${user.venmoUsername}` : ''}\n${invoice.paymentLink ? `Pay Now: ${invoice.paymentLink}` : ''}\n${user.lateFeePolicy ? user.lateFeePolicy : ''}\n\nThanks for your business!\nThis is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.\n    `;
+
+    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const msg = {
+      to: client.email,
+      from: {
+        email: VERIFIED_SENDER,
+        name: `${user.name || 'Your Service Provider'} via BillieNow`
+      },
+      replyTo: user.email,
+      bcc: user.bccEmail || user.email,
+      subject: `Payment Reminder: Invoice #${invoice.invoiceNumber} from ${user.name || 'Your Service Provider'}`,
+      text: textContent,
+      html: emailHtml,
+      categories: ['invoice', 'reminder']
+    };
+    await sgMail.send(msg);
+    console.log('Reminder email sent successfully for invoice:', invoiceId);
+
+    // Log activity in the invoice's activity array
+    const activityEntry = {
+      type: 'reminder',
+      message: 'Reminder email sent',
+      timestamp: new Date().toISOString(),
+      user: { id: userId, name: user.name || user.email }
+    };
+    await invoiceSnap.ref.update({
+      activity: admin.firestore.FieldValue.arrayUnion(activityEntry)
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending invoice reminder:', error);
+    throw new functions.https.HttpsError('internal', error.message);
+  }
+}); 
