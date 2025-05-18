@@ -1298,8 +1298,8 @@ function Invoices() {
                     <span className="font-medium text-secondary-900">${invoice.amount}</span>
                   </td>
                   <td className="py-4 px-4 text-secondary-600">{invoice.description}</td>
-                  <td className="py-4 px-4 text-secondary-600">{new Date(invoice.date || invoice.createdAt).toLocaleDateString()}</td>
-                  <td className="py-4 px-4 text-secondary-600">{new Date(invoice.dueDate).toLocaleDateString()}</td>
+                  <td className="py-4 px-4 text-secondary-600">{invoice.date}</td>
+                  <td className="py-4 px-4 text-secondary-600">{invoice.dueDate}</td>
                   <td className="py-4 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
                   </td>
