@@ -422,20 +422,41 @@ exports.generateRecurringInvoices = functions.pubsub
 
 exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
   try {
+    // Check if the user is authenticated
+    if (!context.auth) {
+      console.error('Authentication failed: No auth context');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send reminders.');
+    }
+
     const { userId, invoiceId, clientId } = data;
     if (!userId || !invoiceId || !clientId) {
+      console.error('Missing parameters:', { userId, invoiceId, clientId });
       throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
     }
+
+    console.log('Processing reminder request:', { userId, invoiceId, clientId, authUid: context.auth.uid });
 
     // Verify the user exists and has access to the invoice
     const userDoc = await admin.firestore().collection('users').doc(userId).get();
     if (!userDoc.exists) {
+      console.error('User not found:', userId);
       throw new functions.https.HttpsError('permission-denied', 'User not found.');
     }
+
+    // Verify the authenticated user matches the userId
+    if (context.auth.uid !== userId) {
+      console.error('Permission denied: Auth user does not match userId', { authUid: context.auth.uid, userId });
+      throw new functions.https.HttpsError('permission-denied', 'User can only send reminders for their own invoices.');
+    }
+
+    // Initialize SendGrid with API key from Firebase config
+    sgMail.setApiKey(functions.config().sendgrid.key);
+    console.log('SendGrid initialized');
 
     // Load invoice
     const invoiceSnap = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
     if (!invoiceSnap.exists) {
+      console.error('Invoice not found:', invoiceId);
       throw new functions.https.HttpsError('not-found', 'Invoice not found.');
     }
     const invoice = invoiceSnap.data();
@@ -443,14 +464,13 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     // Load client
     const clientSnap = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
     if (!clientSnap.exists) {
+      console.error('Client not found:', clientId);
       throw new functions.https.HttpsError('not-found', 'Client not found.');
     }
     const client = clientSnap.data();
 
     const user = userDoc.data();
-
-    // Initialize SendGrid with API key from Firebase config
-    sgMail.setApiKey(functions.config().sendgrid.key);
+    console.log('Data loaded successfully for reminder');
 
     // Use the same template as invoice email, but tweak subject/body
     const lineItems = invoice.lineItems || [{
@@ -653,20 +673,28 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
     await sgMail.send(msg);
     console.log('Reminder email sent successfully for invoice:', invoiceId);
 
-    // Log activity in the invoice's activity array
-    const activityEntry = {
+    // Record the activity
+    await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).collection('activity').add({
       type: 'reminder',
-      message: 'Reminder email sent',
-      timestamp: new Date().toISOString(),
-      user: { id: userId, name: user.name || user.email }
-    };
-    await invoiceSnap.ref.update({
-      activity: admin.firestore.FieldValue.arrayUnion(activityEntry)
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      details: `Reminder email sent to ${client.email}`
     });
 
-    return { success: true };
+    return { success: true, message: 'Reminder sent successfully' };
   } catch (error) {
-    console.error('Error sending invoice reminder:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    console.error('Error sending reminder:', error);
+    
+    // Format error appropriately for the client
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    
+    // Check for SendGrid specific errors
+    if (error.response && error.response.body) {
+      console.error('SendGrid error details:', error.response.body);
+      throw new functions.https.HttpsError('internal', `Email service error: ${error.message}`);
+    }
+    
+    throw new functions.https.HttpsError('internal', `Failed to send reminder: ${error.message}`);
   }
 });
