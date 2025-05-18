@@ -409,4 +409,5 @@ class InvoiceGenerationService {
   }
 }
 
-export const invoiceGenerationService = new InvoiceGenerationService(); 
+export const invoiceGenerationService = new InvoiceGenerationService();
+export default InvoiceGenerationService; 

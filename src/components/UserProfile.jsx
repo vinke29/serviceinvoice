@@ -1,22 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { showToast } from '../utils/toast.jsx';
-import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
-
-// Google Maps JS API loader for PlaceAutocompleteElement
-function loadGoogleMapsScript(apiKey) {
-  if (window.google && window.google.maps && window.customElements.get('gmpx-place-autocomplete')) return;
-  if (document.getElementById('google-maps-script')) return;
-  const script = document.createElement('script');
-  script.id = 'google-maps-script';
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=beta`;
-  script.async = true;
-  document.body.appendChild(script);
-}
 
 function UserProfile() {
   const [loading, setLoading] = useState(true);
@@ -37,43 +23,6 @@ function UserProfile() {
     paymentInstructions: '',
     logo: ''
   });
-
-  const autocompleteRef = useRef(null);
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-    libraries: ['places'],
-  });
-
-  useEffect(() => {
-    loadGoogleMapsScript(apiKey);
-    const checkReady = setInterval(() => {
-      if (window.customElements && window.customElements.get('gmpx-place-autocomplete')) {
-        setAutocompleteReady(true);
-        clearInterval(checkReady);
-      }
-    }, 100);
-    return () => clearInterval(checkReady);
-  }, [apiKey]);
-
-  const onPlaceChanged = () => {
-    if (autocompleteRef.current) {
-      const place = autocompleteRef.current.getPlace();
-      if (!place.address_components) return;
-      const getComponent = (type) => {
-        const comp = place.address_components.find(c => c.types.includes(type));
-        return comp ? comp.long_name : '';
-      };
-      setFormData(f => ({
-        ...f,
-        address: getComponent('street_number') + ' ' + getComponent('route'),
-        city: getComponent('locality') || getComponent('sublocality') || getComponent('postal_town'),
-        state: getComponent('administrative_area_level_1'),
-        zip: getComponent('postal_code'),
-        country: getComponent('country'),
-      }));
-    }
-  };
 
   // Fetch user profile data when component mounts
   useEffect(() => {
@@ -296,19 +245,15 @@ function UserProfile() {
             />
           </div>
           
-          {/* Phone Number */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-            <div className="flex items-center bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 transition-all">
-              <PhoneInput
-                international
-                defaultCountry="US"
-                value={formData.phone}
-                onChange={value => setFormData({ ...formData, phone: value })}
-                className="flex-1 border-none outline-none focus:ring-0"
-                inputComponent="input"
-              />
-            </div>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
 
           {/* Business Information */}
@@ -384,42 +329,13 @@ function UserProfile() {
           
           <div className="col-span-2 mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
-            {isLoaded ? (
-              <Autocomplete
-                onLoad={ac => (autocompleteRef.current = ac)}
-                onPlaceChanged={onPlaceChanged}
-              >
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                    {/* Location SVG icon */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 10c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" /></svg>
-                  </span>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                    placeholder="Enter your street address..."
-                  />
-                </div>
-              </Autocomplete>
-            ) : (
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  {/* Location SVG icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2zm0 10c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8z" /></svg>
-                </span>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                  placeholder="Enter your street address..."
-                />
-              </div>
-            )}
+            <input
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
           
           <div className="mb-4">

@@ -4,6 +4,7 @@ import { getAgentConfig, getClient } from '../firebaseData'
 import { auth, db } from '../firebase'
 import { pdfService } from '../services/pdfService'
 import { doc, getDoc } from 'firebase/firestore'
+import { format } from 'date-fns'
 
 function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
   const [tab, setTab] = useState('details')
@@ -195,7 +196,15 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
           </div>
         )}
         {tab === 'payments' && (
-          <div className="text-secondary-600">Payments for this invoice (coming soon)</div>
+          <div className="text-secondary-600">
+            {invoice.paidAt ? (
+              <div className="mb-2">
+                <span className="font-medium text-secondary-900">Paid on:</span> {format(new Date(invoice.paidAt), 'PPP')}
+              </div>
+            ) : (
+              <div>No payments recorded for this invoice yet.</div>
+            )}
+          </div>
         )}
         {tab === 'activity' && (
           <div className="text-secondary-600">Invoice activity log (coming soon)</div>
