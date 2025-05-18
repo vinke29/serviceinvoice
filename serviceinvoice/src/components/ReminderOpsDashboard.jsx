@@ -9,6 +9,9 @@ import clsx from 'clsx';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { getInvoices } from '../firebaseData';
 import { auth } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { showToast } from '../utils/toast.jsx';
 
 const ReminderOpsDashboard = () => {
   const [filters, setFilters] = useState({
@@ -78,7 +81,28 @@ const ReminderOpsDashboard = () => {
     return 'text-yellow-600';
   };
 
-  const handleQuickAction = (id, action) => {
+  const handleQuickAction = async (id, action) => {
+    if (action === 'sendReminder') {
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('User not authenticated');
+        const invoiceRef = doc(db, 'invoices', id);
+        await updateDoc(invoiceRef, { reminderRequested: true });
+        if (typeof showToast === 'function') {
+          showToast('success', 'Reminder will be sent shortly!');
+        } else {
+          alert('Reminder will be sent shortly!');
+        }
+      } catch (error) {
+        console.error('Error sending reminder:', error);
+        if (typeof showToast === 'function') {
+          showToast('error', 'Failed to request reminder.');
+        } else {
+          alert('Failed to request reminder.');
+        }
+      }
+      return;
+    }
     // Implement quick actions (send now, pause, mark as paid)
     console.log(`Action ${action} for reminder ${id}`);
   };
