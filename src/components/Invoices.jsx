@@ -1195,12 +1195,17 @@ function Invoices() {
   // Add handler to send reminder email
   async function handleSendReminder(invoice, setInvoices, setSelectedInvoice, e) {
     if (e) e.stopPropagation(); // Prevent drawer from opening
+    
+    // Set loading state
+    showToast('info', 'Sending reminder...', { autoClose: false, toastId: 'sending-reminder' });
+    
     try {
       const user = auth.currentUser;
       console.log("Current auth user:", user);
       
       if (!user) {
         console.error("Not authenticated - user is null");
+        toast.dismiss('sending-reminder');
         showToast('error', 'You must be logged in to send reminders.');
         throw new Error('Not authenticated');
       }
@@ -1213,56 +1218,49 @@ function Invoices() {
       const client = clients.find(c => c.id === invoice.clientId);
       if (!client) {
         console.error("Client not found for ID:", invoice.clientId);
+        toast.dismiss('sending-reminder');
         showToast('error', 'Client information not found.');
         throw new Error('Client not found');
       }
       
-      console.log("Calling sendInvoiceReminder with params:", { 
-        userId: user.uid, 
-        invoiceId: invoice.id, 
-        clientId: client.id 
+      console.log("Calling sendInvoiceReminder function with params:", {
+        userId: user.uid,
+        invoiceId: invoice.id,
+        clientId: client.id
       });
       
-      // Create a fresh instance of the function
-      const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
-      
-      // Set loading state
-      showToast('info', 'Sending reminder...', { autoClose: false, toastId: 'sending-reminder' });
-      
-      // Call the function with the parameters
-      const result = await sendInvoiceReminder({ 
-        userId: user.uid, 
-        invoiceId: invoice.id, 
-        clientId: client.id 
+      const result = await sendInvoiceReminder({
+        userId: user.uid,
+        invoiceId: invoice.id,
+        clientId: client.id
       });
       
       console.log("sendInvoiceReminder result:", result);
-      
-      // Close the loading toast
       toast.dismiss('sending-reminder');
-      
-      // Show success message
       showToast('success', 'Reminder email sent!');
     } catch (error) {
-      // Close the loading toast if it exists
       toast.dismiss('sending-reminder');
+      console.error("Send reminder error:", error);
       
-      console.error('Send reminder error:', error);
-      
-      // More detailed error handling
-      if (error.code === 'functions/unauthenticated' || error.message?.includes('Unauthorized') || error.details?.includes('Unauthorized')) {
-        console.error('Authentication error details:', error);
+      // Check for specific error codes and provide user-friendly messages
+      if (error.code === "functions/resource-exhausted") {
+        console.error("SendGrid credits exceeded:", error);
+        showToast('error', 'Email sending limit reached. Please upgrade your SendGrid plan or try again later.');
+      } else if (error.code === "functions/unauthenticated" || 
+          (error.message && error.message.includes("Unauthorized")) || 
+          (error.details && error.details.includes("Unauthorized"))) {
+        console.error("Authentication error details:", error);
         showToast('error', 'Authentication failed. Please log out and log back in.');
-      } else if (error.code === 'functions/permission-denied') {
+      } else if (error.code === "functions/permission-denied") {
         showToast('error', 'You do not have permission to send this reminder.');
-      } else if (error.code === 'functions/not-found') {
+      } else if (error.code === "functions/not-found") {
         showToast('error', 'The invoice or client information could not be found.');
-      } else if (error.code === 'functions/invalid-argument') {
+      } else if (error.code === "functions/invalid-argument") {
         showToast('error', 'Invalid information provided. Please try again.');
-      } else if (error.code?.startsWith('functions/')) {
-        showToast('error', `Server error: ${error.message || 'Unknown error'}`);
+      } else if (error.code && error.code.startsWith("functions/")) {
+        showToast('error', `Server error: ${error.message || "Unknown error"}`);
       } else {
-        showToast('error', `Failed to send reminder: ${error.message || 'Unknown error'}`);
+        showToast('error', `Failed to send reminder: ${error.message || "Unknown error"}`);
       }
     }
   }
