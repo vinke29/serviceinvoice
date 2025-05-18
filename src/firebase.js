@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 // Your web app's Firebase configuration
 // Replace these placeholders with your actual Firebase project configuration
@@ -22,9 +23,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-
-// Initialize Storage with custom settings
 export const storage = getStorage(app);
+export const functions = getFunctions(app, 'us-central1');
 
 // Authentication functions
 export const signIn = async (email, password) => {

@@ -11,12 +11,12 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import clsx from 'clsx';
 import { getInvoices, addInvoice, updateInvoice, deleteInvoice, getClients, getAgentConfig, updateClient } from '../firebaseData';
-import { auth } from '../firebase';
+import { auth, functions } from '../firebase';
 import { showToast } from '../utils/toast.jsx';
 import InvoiceGenerationService from '../services/invoiceGenerationService';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -1201,7 +1201,6 @@ function Invoices() {
       const client = clients.find(c => c.id === invoice.clientId);
       if (!client) throw new Error('Client not found');
       // Call the HTTPS function
-      const functions = getFunctions();
       const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
       await sendInvoiceReminder({ userId: user.uid, invoiceId: invoice.id, clientId: client.id });
       // Optionally update local state to reflect activity (activity will be updated on next fetch)
