@@ -170,6 +170,24 @@ function UserProfile() {
     }
   };
 
+  async function refreshToken() {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        await user.getIdToken(true); // Force refresh the token
+        console.log("Authentication token refreshed successfully");
+        // Show success message
+        alert("Authentication token refreshed successfully");
+      } else {
+        console.error("No user is currently signed in");
+        alert("Please sign in to refresh your token");
+      }
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      alert("Failed to refresh token: " + error.message);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -420,6 +438,15 @@ function UserProfile() {
           </button>
         </div>
       </form>
+
+      <div className="mt-6 flex justify-end">
+        <button 
+          onClick={refreshToken}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Refresh Auth Token
+        </button>
+      </div>
     </div>
   );
 }

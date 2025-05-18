@@ -10,6 +10,7 @@ import Login from './components/Login'
 import OnboardingFlow from './components/OnboardingFlow'
 import InvoiceGeneratedNotification from './components/InvoiceGeneratedNotification'
 import StatusChangeModalDemo from './components/StatusChangeModalDemo'
+import AuthTest from './components/AuthTest'
 import { auth } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { invoiceGenerationService } from './services/invoiceGenerationService'
@@ -297,6 +298,7 @@ function App() {
               <Route path="/ai-agent" element={<AIAgent />} />
               <Route path="/profile" element={<UserProfile key={user.uid} />} />
               <Route path="/modal-demo" element={<StatusChangeModalDemo />} />
+              <Route path="/auth-test" element={<AuthTest />} />
             </Routes>
           </main>
           <InvoiceGeneratedNotification />

@@ -1196,18 +1196,51 @@ function Invoices() {
     if (e) e.stopPropagation(); // Prevent drawer from opening
     try {
       const user = auth.currentUser;
-      if (!user) throw new Error('Not authenticated');
+      console.log("Current auth user:", user);
+      
+      if (!user) {
+        console.error("Not authenticated - user is null");
+        showToast('error', 'You must be logged in to send reminders.');
+        throw new Error('Not authenticated');
+      }
+      
       // Find the client for this invoice
       const client = clients.find(c => c.id === invoice.clientId);
-      if (!client) throw new Error('Client not found');
-      // Call the HTTPS function
+      if (!client) {
+        console.error("Client not found for ID:", invoice.clientId);
+        throw new Error('Client not found');
+      }
+      
+      console.log("Calling sendInvoiceReminder with params:", { 
+        userId: user.uid, 
+        invoiceId: invoice.id, 
+        clientId: client.id 
+      });
+      
+      // Create a fresh instance of the function
       const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
-      await sendInvoiceReminder({ userId: user.uid, invoiceId: invoice.id, clientId: client.id });
+      
+      // Call the function with the parameters
+      const result = await sendInvoiceReminder({ 
+        userId: user.uid, 
+        invoiceId: invoice.id, 
+        clientId: client.id 
+      });
+      
+      console.log("sendInvoiceReminder result:", result);
+      
       // Optionally update local state to reflect activity (activity will be updated on next fetch)
       showToast('success', 'Reminder email sent!');
     } catch (error) {
-      showToast('error', 'Failed to send reminder.');
       console.error('Send reminder error:', error);
+      // More detailed error message
+      if (error.code === 'unauthenticated' || error.message.includes('Unauthorized')) {
+        showToast('error', 'Authentication failed. Try logging out and back in.');
+      } else if (error.code === 'permission-denied') {
+        showToast('error', 'You do not have permission to send this reminder.');
+      } else {
+        showToast('error', `Failed to send reminder: ${error.message}`);
+      }
     }
   }
 

@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 // Your web app's Firebase configuration
 // Replace these placeholders with your actual Firebase project configuration
@@ -24,7 +24,17 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+// Initialize Firebase Functions with region
 export const functions = getFunctions(app, 'us-central1');
+
+// Enable Firebase Functions emulator in development
+if (process.env.NODE_ENV === 'development') {
+  connectFunctionsEmulator(functions, 'localhost', 5001);
+}
+
+// Export httpsCallable for direct use in components
+export { httpsCallable } from 'firebase/functions';
 
 // Authentication functions
 export const signIn = async (email, password) => {
