@@ -12,6 +12,10 @@ import 'react-day-picker/dist/style.css';
 import clsx from 'clsx';
 import { getInvoices, addInvoice, updateInvoice, deleteInvoice, getClients, getAgentConfig, updateClient } from '../firebaseData';
 import { auth } from '../firebase';
+import { showToast } from '../utils/toast.jsx';
+import InvoiceGenerationService from '../services/invoiceGenerationService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -44,7 +48,10 @@ function getInvoiceMonthYear(inv) {
   let invoiceMonth = inv.month;
   let invoiceYear = inv.year;
   if (invoiceMonth === undefined || invoiceYear === undefined) {
-    const d = new Date(inv.scheduledDate || inv.date);
+    // Parse the date string as a local date to avoid timezone issues
+    const dateString = inv.scheduledDate || inv.date;
+    const [year, month, day] = dateString.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     invoiceMonth = d.getMonth();
     invoiceYear = d.getFullYear();
   }
@@ -126,7 +133,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
       const user = auth.currentUser
       if (user) {
         const config = await getAgentConfig(user.uid)
-        setAgentConfig(config || { netDays: 7 })
+        setAgentConfig(config || { netDays: 0 })
       }
     }
     fetchAgentConfig()
@@ -516,6 +523,7 @@ function Invoices() {
   const [dateRange, setDateRange] = useState([undefined, undefined])
   const [invoiceDateRange, setInvoiceDateRange] = useState([undefined, undefined])
   const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
   const [scheduledInvoices, setScheduledInvoices] = useState([]);
   const [showScheduled, setShowScheduled] = useState(false);
   const [activeScheduleMonth, setActiveScheduleMonth] = useState('current');
@@ -570,7 +578,7 @@ function Invoices() {
   // Load invoices and clients from Firestore on mount
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      if (initialLoad) setLoading(true)
       const user = auth.currentUser
       if (user) {
         const [invoiceData, clientData, configData] = await Promise.all([
@@ -580,13 +588,16 @@ function Invoices() {
         ])
         setInvoices(invoiceData)
         setClients(clientData)
-        setAgentConfig(configData || { netDays: 7 }) // Default to 7 days if not set
+        setAgentConfig(configData || { netDays: 0 })
       } else {
         setInvoices([])
         setClients([])
         setAgentConfig(null)
       }
-      setLoading(false)
+      if (initialLoad) {
+        setLoading(false)
+        setInitialLoad(false)
+      }
     }
     fetchData()
     
@@ -658,9 +669,10 @@ function Invoices() {
       // First process all scheduled invoices (both manual and recurring)
       invoices.forEach(invoice => {
         if (invoice.deleted) return;
-        
         try {
-          const invoiceDate = new Date(invoice.date);
+          // Parse invoice.date as a local date to avoid timezone issues
+          const [year, month, day] = invoice.date.split('-').map(Number);
+          const invoiceDate = new Date(year, month - 1, day);
           if (invoice.status === 'scheduled' || (invoice.isRecurring && isFuture(invoiceDate))) {
             nextYearInvoices.push({
               id: invoice.id,
@@ -704,13 +716,15 @@ function Invoices() {
     }
     
     try {
-      const frequency = invoiceData.billingFrequency;
-      const startDate = new Date(invoiceData.date);
-      const netDays = agentConfig?.netDays || 7;
+      // Use local date construction to avoid timezone issues
+      const [year, month, day] = invoiceData.date.split('-').map(Number);
+      const startDate = new Date(year, month - 1, day); // month is 0-based
+      console.log('DEBUG: startDate', startDate.toISOString(), startDate);
+      const netDays = agentConfig?.netDays ?? 0;
       
       // Calculate number of invoices based on frequency
       let numFutureInvoices;
-      switch (frequency) {
+      switch (invoiceData.billingFrequency) {
         case 'weekly':
           numFutureInvoices = 51; // 51 more weeks (first week is handled by initial invoice)
           break;
@@ -731,10 +745,10 @@ function Invoices() {
       }
       
       const scheduledInvoiceData = [];
-      let currentDate = new Date(startDate);
+      let currentDate = startDate;
       
       // Advance to next period first since initial invoice handles the first period
-      switch (frequency) {
+      switch (invoiceData.billingFrequency) {
         case 'weekly':
           currentDate = addDays(currentDate, 7);
           break;
@@ -756,9 +770,12 @@ function Invoices() {
       
       // Generate future invoices (starting from second period)
       for (let i = 0; i < numFutureInvoices; i++) {
-        // Calculate due date
-        const dueDate = netDays === 0 ? new Date(currentDate) : addDays(new Date(currentDate), netDays);
-        
+        console.log(`DEBUG: Generating invoice #${i+1} for currentDate`, currentDate.toISOString(), currentDate);
+        // Calculate due date using local date math
+        const dueDate = netDays === 0
+          ? format(currentDate, 'yyyy-MM-dd')
+          : format(addDays(currentDate, netDays), 'yyyy-MM-dd');
+        console.log(`DEBUG: Scheduled invoice date: ${format(currentDate, 'yyyy-MM-dd')}, dueDate: ${dueDate}`);
         // Create the invoice - keep original description
         const scheduledInvoice = {
           clientId: invoiceData.clientId,
@@ -767,16 +784,16 @@ function Invoices() {
           amount: invoiceData.amount,
           description: invoiceData.description, // Keep original description
           date: format(currentDate, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          dueDate,
           status: 'scheduled',
-          billingFrequency: frequency,
+          billingFrequency: invoiceData.billingFrequency,
           isRecurring: true
         };
         
         scheduledInvoiceData.push(scheduledInvoice);
         
         // Advance to next date based on frequency
-        switch (frequency) {
+        switch (invoiceData.billingFrequency) {
           case 'weekly':
             currentDate = addDays(currentDate, 7);
             break;
@@ -998,9 +1015,6 @@ function Invoices() {
       } catch (error) {
         console.error("Error creating invoice:", error);
         alert(`Failed to create invoice: ${error.message}`);
-      } finally {
-        // Complete any loading indicator that was present
-        setLoading(false);
       }
     }
     setShowForm(false)
@@ -1176,6 +1190,46 @@ function Invoices() {
     }
   }
 
+  // Add handler to send reminder email
+  async function handleSendReminder(invoice) {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      // Find the client for this invoice
+      const client = clients.find(c => c.id === invoice.clientId);
+      // Fetch user profile data from Firestore
+      let userData = {};
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) userData = userDoc.data();
+      } catch (e) { /* ignore */ }
+      // Use the service to send the email
+      const invoiceService = new InvoiceGenerationService();
+      await invoiceService.sendInvoiceEmail(client, invoice, userData);
+      showToast('success', 'Reminder email sent!');
+    } catch (error) {
+      showToast('error', 'Failed to send reminder.');
+      console.error('Send reminder error:', error);
+    }
+  }
+
+  // Add handler to mark invoice as paid
+  async function handleMarkPaid(invoice, setInvoices, setSelectedInvoice) {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const paidAt = new Date().toISOString();
+      await updateInvoice(user.uid, { ...invoice, status: 'paid', paidAt });
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, status: 'paid', paidAt } : inv));
+      setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? { ...prev, status: 'paid', paidAt } : prev);
+      showToast('success', 'Invoice marked as paid!');
+    } catch (error) {
+      showToast('error', 'Failed to mark as paid.');
+      console.error('Mark paid error:', error);
+    }
+  }
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1298,32 +1352,75 @@ function Invoices() {
                     <span className="font-medium text-secondary-900">${invoice.amount}</span>
                   </td>
                   <td className="py-4 px-4 text-secondary-600">{invoice.description}</td>
-                  <td className="py-4 px-4 text-secondary-600">{new Date(invoice.date || invoice.createdAt).toLocaleDateString()}</td>
-                  <td className="py-4 px-4 text-secondary-600">{new Date(invoice.dueDate).toLocaleDateString()}</td>
+                  <td className="py-4 px-4 text-secondary-600">
+                    {invoice.date instanceof Date
+                      ? format(invoice.date, 'yyyy-MM-dd')
+                      : (invoice.date || (invoice.scheduledDate instanceof Date
+                          ? format(invoice.scheduledDate, 'yyyy-MM-dd')
+                          : invoice.scheduledDate))}
+                  </td>
+                  <td className="py-4 px-4 text-secondary-600">
+                    {invoice.dueDate instanceof Date
+                      ? format(invoice.dueDate, 'yyyy-MM-dd')
+                      : invoice.dueDate}
+                  </td>
                   <td className="py-4 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={e => { e.stopPropagation(); handleEditInvoice(invoice); }}
-                        className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
-                        title="Edit"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
-                        className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
-                        title="Delete"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200" title="More Actions">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="19" cy="12" r="2" />
+                            <circle cx="5" cy="12" r="2" />
+                          </svg>
+                        </button>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Content className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
+                        <DropdownMenu.Item asChild>
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            onClick={() => handleEditInvoice(invoice)}
+                          >
+                            Edit
+                          </button>
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item asChild>
+                          <button
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            onClick={() => handleDeleteInvoice(invoice)}
+                          >
+                            Delete
+                          </button>
+                        </DropdownMenu.Item>
+                        {(invoice.status === 'pending' || invoice.status === 'overdue') && (
+                          <>
+                            <DropdownMenu.Separator className="my-1 border-t border-secondary-100" />
+                            <DropdownMenu.Item asChild>
+                              <button
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                                onClick={() => handleSendReminder(invoice)}
+                              >
+                                Send Reminder
+                              </button>
+                            </DropdownMenu.Item>
+                            <DropdownMenu.Item asChild>
+                              <button
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleMarkPaid(invoice, setInvoices, setSelectedInvoice);
+                                }}
+                              >
+                                Mark Paid
+                              </button>
+                            </DropdownMenu.Item>
+                          </>
+                        )}
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Root>
                   </td>
                 </tr>
               ))}
@@ -1428,12 +1525,16 @@ function Invoices() {
                         </td>
                         <td className="py-4 px-4 text-secondary-600">{invoice.description}</td>
                         <td className="py-4 px-4 text-secondary-600">
-                          {typeof invoice.date === 'object' 
-                            ? format(invoice.date, 'MMM d, yyyy')
-                            : new Date(invoice.scheduledDate).toLocaleDateString()}
+                          {invoice.date instanceof Date
+                            ? format(invoice.date, 'yyyy-MM-dd')
+                            : (invoice.date || (invoice.scheduledDate instanceof Date
+                                ? format(invoice.scheduledDate, 'yyyy-MM-dd')
+                                : invoice.scheduledDate))}
                         </td>
                         <td className="py-4 px-4 text-secondary-600">
-                          {new Date(invoice.dueDate).toLocaleDateString()}
+                          {invoice.dueDate instanceof Date
+                            ? format(invoice.dueDate, 'yyyy-MM-dd')
+                            : invoice.dueDate}
                         </td>
                         <td className="py-4 px-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium 
