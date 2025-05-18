@@ -5,13 +5,10 @@ const sgMail = require('@sendgrid/mail');
 // Version 1.0.1 - Anti-spam improvements
 admin.initializeApp();
 
-// Initialize SendGrid with API key from Firebase config
-sgMail.setApiKey(functions.config().sendgrid.key);
-
 // Create a new user document in Firestore when a user signs up
-exports.createUserDocument = functions.auth.user().onCreate(async (user) => {
+exports.createUserDocument = functions.auth.user().onCreate(async (userRecord) => {
   try {
-    const { uid, email, displayName } = user;
+    const { uid, email, displayName } = userRecord;
     console.log(`Creating new user document for: ${email} (${uid})`);
     
     // Create a new user document with default fields
@@ -45,6 +42,9 @@ exports.sendInvoiceEmail = functions.firestore
   .document('users/{userId}/invoices/{invoiceId}')
   .onCreate(async (snap, context) => {
     try {
+      // Initialize SendGrid with API key from Firebase config
+      sgMail.setApiKey(functions.config().sendgrid.key);
+      
       const invoice = snap.data();
       const { userId, invoiceId } = context.params;
 
@@ -421,29 +421,36 @@ exports.generateRecurringInvoices = functions.pubsub
   });
 
 exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'The function must be called while authenticated.');
-  }
   try {
     const { userId, invoiceId, clientId } = data;
     if (!userId || !invoiceId || !clientId) {
       throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
     }
 
+    // Verify the user exists and has access to the invoice
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('permission-denied', 'User not found.');
+    }
+
     // Load invoice
     const invoiceSnap = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
-    if (!invoiceSnap.exists) throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    if (!invoiceSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    }
     const invoice = invoiceSnap.data();
 
     // Load client
     const clientSnap = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
-    if (!clientSnap.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
+    if (!clientSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Client not found.');
+    }
     const client = clientSnap.data();
 
-    // Load user
-    const userSnap = await admin.firestore().collection('users').doc(userId).get();
-    if (!userSnap.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
-    const user = userSnap.data();
+    const user = userDoc.data();
+
+    // Initialize SendGrid with API key from Firebase config
+    sgMail.setApiKey(functions.config().sendgrid.key);
 
     // Use the same template as invoice email, but tweak subject/body
     const lineItems = invoice.lineItems || [{
@@ -584,7 +591,50 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     `;
 
     const textContent = `
-PAYMENT REMINDER\n\n${user.companyName || user.name}\n${user.businessNumber ? `Business Number: ${user.businessNumber}` : ''}\n${user.address || ''}\n${user.phone || ''}\n${user.email}\n\nInvoice #: ${invoice.invoiceNumber}\nDate: ${invoice.date}\nDue Date: ${invoice.dueDate}\nBalance Due: USD $${formatCurrency(total)}\n\nBill To:\n${client.name}\n${client.address || ''}\n${client.city && client.state ? `${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}` : ''}\n${client.email}\n${client.phone || ''}\n\n${lineItems.map(item => `\nDescription: ${item.description}\nRate: $${formatCurrency(item.rate || item.amount)}\nQuantity: ${item.quantity || 1}\n${taxRate > 0 ? `Tax Rate: ${taxRate}%` : ''}\nAmount: $${formatCurrency(item.amount)}\n`).join('\n')}\n\nSubtotal: $${formatCurrency(subtotal)}\n${taxRate > 0 ? `Tax (${taxRate}%): $${formatCurrency(taxAmount)}` : ''}\nTotal: $${formatCurrency(total)}\n${invoice.paymentAmount ? `\nPayment: -$${formatCurrency(invoice.paymentAmount)}\nBalance Due: USD $${formatCurrency(total - invoice.paymentAmount)}\n` : ''}\n\n${user.paymentInstructions ? user.paymentInstructions : ''}\n${user.venmoUsername ? `Venmo: @${user.venmoUsername}` : ''}\n${invoice.paymentLink ? `Pay Now: ${invoice.paymentLink}` : ''}\n${user.lateFeePolicy ? user.lateFeePolicy : ''}\n\nThanks for your business!\nThis is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.\n    `;
+PAYMENT REMINDER
+
+${user.companyName || user.name}
+${user.businessNumber ? `Business Number: ${user.businessNumber}` : ''}
+${user.address || ''}
+${user.phone || ''}
+${user.email}
+
+Invoice #: ${invoice.invoiceNumber}
+Date: ${invoice.date}
+Due Date: ${invoice.dueDate}
+Balance Due: USD $${formatCurrency(total)}
+
+Bill To:
+${client.name}
+${client.address || ''}
+${client.city && client.state ? `${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}` : ''}
+${client.email}
+${client.phone || ''}
+
+${lineItems.map(item => `
+Description: ${item.description}
+Rate: $${formatCurrency(item.rate || item.amount)}
+Quantity: ${item.quantity || 1}
+${taxRate > 0 ? `Tax Rate: ${taxRate}%` : ''}
+Amount: $${formatCurrency(item.amount)}
+`).join('\n')}
+
+Subtotal: $${formatCurrency(subtotal)}
+${taxRate > 0 ? `Tax (${taxRate}%): $${formatCurrency(taxAmount)}` : ''}
+Total: $${formatCurrency(total)}
+${invoice.paymentAmount ? `
+Payment: -$${formatCurrency(invoice.paymentAmount)}
+Balance Due: USD $${formatCurrency(total - invoice.paymentAmount)}
+` : ''}
+
+${user.paymentInstructions ? user.paymentInstructions : ''}
+${user.venmoUsername ? `Venmo: @${user.venmoUsername}` : ''}
+${invoice.paymentLink ? `Pay Now: ${invoice.paymentLink}` : ''}
+${user.lateFeePolicy ? user.lateFeePolicy : ''}
+
+Thanks for your business!
+This is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.
+    `;
 
     const VERIFIED_SENDER = 'billienowcontact@gmail.com';
     const msg = {
@@ -619,4 +669,4 @@ PAYMENT REMINDER\n\n${user.companyName || user.name}\n${user.businessNumber ? `B
     console.error('Error sending invoice reminder:', error);
     throw new functions.https.HttpsError('internal', error.message);
   }
-}); 
+});
