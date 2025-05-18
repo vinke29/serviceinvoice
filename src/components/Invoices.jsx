@@ -126,7 +126,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
       const user = auth.currentUser
       if (user) {
         const config = await getAgentConfig(user.uid)
-        setAgentConfig(config || { netDays: 7 })
+        setAgentConfig(config || { netDays: 0 })
       }
     }
     fetchAgentConfig()
@@ -580,7 +580,7 @@ function Invoices() {
         ])
         setInvoices(invoiceData)
         setClients(clientData)
-        setAgentConfig(configData || { netDays: 7 }) // Default to 7 days if not set
+        setAgentConfig(configData || { netDays: 0 })
       } else {
         setInvoices([])
         setClients([])
