@@ -44,7 +44,10 @@ function getInvoiceMonthYear(inv) {
   let invoiceMonth = inv.month;
   let invoiceYear = inv.year;
   if (invoiceMonth === undefined || invoiceYear === undefined) {
-    const d = new Date(inv.scheduledDate || inv.date);
+    // Parse the date string as a local date to avoid timezone issues
+    const dateString = inv.scheduledDate || inv.date;
+    const [year, month, day] = dateString.split('-').map(Number);
+    const d = new Date(year, month - 1, day);
     invoiceMonth = d.getMonth();
     invoiceYear = d.getFullYear();
   }
@@ -658,9 +661,10 @@ function Invoices() {
       // First process all scheduled invoices (both manual and recurring)
       invoices.forEach(invoice => {
         if (invoice.deleted) return;
-        
         try {
-          const invoiceDate = new Date(invoice.date);
+          // Parse invoice.date as a local date to avoid timezone issues
+          const [year, month, day] = invoice.date.split('-').map(Number);
+          const invoiceDate = new Date(year, month - 1, day);
           if (invoice.status === 'scheduled' || (invoice.isRecurring && isFuture(invoiceDate))) {
             nextYearInvoices.push({
               id: invoice.id,
@@ -704,13 +708,15 @@ function Invoices() {
     }
     
     try {
-      const frequency = invoiceData.billingFrequency;
-      const startDate = new Date(invoiceData.date);
-      const netDays = agentConfig?.netDays || 7;
+      // Use local date construction to avoid timezone issues
+      const [year, month, day] = invoiceData.date.split('-').map(Number);
+      const startDate = new Date(year, month - 1, day); // month is 0-based
+      console.log('DEBUG: startDate', startDate.toISOString(), startDate);
+      const netDays = agentConfig?.netDays ?? 0;
       
       // Calculate number of invoices based on frequency
       let numFutureInvoices;
-      switch (frequency) {
+      switch (invoiceData.billingFrequency) {
         case 'weekly':
           numFutureInvoices = 51; // 51 more weeks (first week is handled by initial invoice)
           break;
@@ -731,10 +737,10 @@ function Invoices() {
       }
       
       const scheduledInvoiceData = [];
-      let currentDate = new Date(startDate);
+      let currentDate = startDate;
       
       // Advance to next period first since initial invoice handles the first period
-      switch (frequency) {
+      switch (invoiceData.billingFrequency) {
         case 'weekly':
           currentDate = addDays(currentDate, 7);
           break;
@@ -756,9 +762,12 @@ function Invoices() {
       
       // Generate future invoices (starting from second period)
       for (let i = 0; i < numFutureInvoices; i++) {
-        // Calculate due date
-        const dueDate = netDays === 0 ? new Date(currentDate) : addDays(new Date(currentDate), netDays);
-        
+        console.log(`DEBUG: Generating invoice #${i+1} for currentDate`, currentDate.toISOString(), currentDate);
+        // Calculate due date using local date math
+        const dueDate = netDays === 0
+          ? format(currentDate, 'yyyy-MM-dd')
+          : format(addDays(currentDate, netDays), 'yyyy-MM-dd');
+        console.log(`DEBUG: Scheduled invoice date: ${format(currentDate, 'yyyy-MM-dd')}, dueDate: ${dueDate}`);
         // Create the invoice - keep original description
         const scheduledInvoice = {
           clientId: invoiceData.clientId,
@@ -767,16 +776,16 @@ function Invoices() {
           amount: invoiceData.amount,
           description: invoiceData.description, // Keep original description
           date: format(currentDate, 'yyyy-MM-dd'),
-          dueDate: format(dueDate, 'yyyy-MM-dd'),
+          dueDate,
           status: 'scheduled',
-          billingFrequency: frequency,
+          billingFrequency: invoiceData.billingFrequency,
           isRecurring: true
         };
         
         scheduledInvoiceData.push(scheduledInvoice);
         
         // Advance to next date based on frequency
-        switch (frequency) {
+        switch (invoiceData.billingFrequency) {
           case 'weekly':
             currentDate = addDays(currentDate, 7);
             break;
@@ -1298,8 +1307,18 @@ function Invoices() {
                     <span className="font-medium text-secondary-900">${invoice.amount}</span>
                   </td>
                   <td className="py-4 px-4 text-secondary-600">{invoice.description}</td>
-                  <td className="py-4 px-4 text-secondary-600">{invoice.date}</td>
-                  <td className="py-4 px-4 text-secondary-600">{invoice.dueDate}</td>
+                  <td className="py-4 px-4 text-secondary-600">
+                    {invoice.date instanceof Date
+                      ? format(invoice.date, 'yyyy-MM-dd')
+                      : (invoice.date || (invoice.scheduledDate instanceof Date
+                          ? format(invoice.scheduledDate, 'yyyy-MM-dd')
+                          : invoice.scheduledDate))}
+                  </td>
+                  <td className="py-4 px-4 text-secondary-600">
+                    {invoice.dueDate instanceof Date
+                      ? format(invoice.dueDate, 'yyyy-MM-dd')
+                      : invoice.dueDate}
+                  </td>
                   <td className="py-4 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
                   </td>
@@ -1428,12 +1447,16 @@ function Invoices() {
                         </td>
                         <td className="py-4 px-4 text-secondary-600">{invoice.description}</td>
                         <td className="py-4 px-4 text-secondary-600">
-                          {typeof invoice.date === 'object' 
-                            ? format(invoice.date, 'MMM d, yyyy')
-                            : new Date(invoice.scheduledDate).toLocaleDateString()}
+                          {invoice.date instanceof Date
+                            ? format(invoice.date, 'yyyy-MM-dd')
+                            : (invoice.date || (invoice.scheduledDate instanceof Date
+                                ? format(invoice.scheduledDate, 'yyyy-MM-dd')
+                                : invoice.scheduledDate))}
                         </td>
                         <td className="py-4 px-4 text-secondary-600">
-                          {new Date(invoice.dueDate).toLocaleDateString()}
+                          {invoice.dueDate instanceof Date
+                            ? format(invoice.dueDate, 'yyyy-MM-dd')
+                            : invoice.dueDate}
                         </td>
                         <td className="py-4 px-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium 
