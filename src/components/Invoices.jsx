@@ -16,6 +16,7 @@ import { showToast } from '../utils/toast.jsx';
 import InvoiceGenerationService from '../services/invoiceGenerationService';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -1198,31 +1199,12 @@ function Invoices() {
       if (!user) throw new Error('Not authenticated');
       // Find the client for this invoice
       const client = clients.find(c => c.id === invoice.clientId);
-      // Fetch user profile data from Firestore
-      let userData = {};
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) userData = userDoc.data();
-      } catch {}
-      // Send the reminder email
-      const service = new InvoiceGenerationService();
-      await service.sendInvoiceEmail(invoice, client, userData, { isReminder: true });
-      // Add activity entry
-      const activityEntry = {
-        type: 'reminder',
-        message: 'Reminder email sent',
-        timestamp: new Date().toISOString(),
-        user: { id: user.uid, name: user.displayName || user.email }
-      };
-      // Update Firestore
-      const invoiceDocRef = doc(db, 'invoices', invoice.id);
-      await setDoc(invoiceDocRef, {
-        activity: [...(invoice.activity || []), activityEntry]
-      }, { merge: true });
-      // Update local state
-      setInvoices && setInvoices(prev => prev.map(inv => inv.id === invoice.id ? { ...inv, activity: [...(inv.activity || []), activityEntry] } : inv));
-      setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? { ...prev, activity: [...(prev.activity || []), activityEntry] } : prev);
+      if (!client) throw new Error('Client not found');
+      // Call the HTTPS function
+      const functions = getFunctions();
+      const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
+      await sendInvoiceReminder({ userId: user.uid, invoiceId: invoice.id, clientId: client.id });
+      // Optionally update local state to reflect activity (activity will be updated on next fetch)
       showToast('success', 'Reminder email sent!');
     } catch (error) {
       showToast('error', 'Failed to send reminder.');
