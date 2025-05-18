@@ -14,8 +14,9 @@ import { getInvoices, addInvoice, updateInvoice, deleteInvoice, getClients, getA
 import { auth } from '../firebase';
 import { showToast } from '../utils/toast.jsx';
 import InvoiceGenerationService from '../services/invoiceGenerationService';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -1191,22 +1192,19 @@ function Invoices() {
   }
 
   // Add handler to send reminder email
-  async function handleSendReminder(invoice) {
+  async function handleSendReminder(invoice, setInvoices, setSelectedInvoice, e) {
+    if (e) e.stopPropagation(); // Prevent drawer from opening
     try {
       const user = auth.currentUser;
       if (!user) throw new Error('Not authenticated');
       // Find the client for this invoice
       const client = clients.find(c => c.id === invoice.clientId);
-      // Fetch user profile data from Firestore
-      let userData = {};
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) userData = userDoc.data();
-      } catch (e) { /* ignore */ }
-      // Use the service to send the email
-      const invoiceService = new InvoiceGenerationService();
-      await invoiceService.sendInvoiceEmail(client, invoice, userData);
+      if (!client) throw new Error('Client not found');
+      // Call the HTTPS function
+      const functions = getFunctions();
+      const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
+      await sendInvoiceReminder({ userId: user.uid, invoiceId: invoice.id, clientId: client.id });
+      // Optionally update local state to reflect activity (activity will be updated on next fetch)
       showToast('success', 'Reminder email sent!');
     } catch (error) {
       showToast('error', 'Failed to send reminder.');
@@ -1398,13 +1396,11 @@ function Invoices() {
                         {(invoice.status === 'pending' || invoice.status === 'overdue') && (
                           <>
                             <DropdownMenu.Separator className="my-1 border-t border-secondary-100" />
-                            <DropdownMenu.Item asChild>
-                              <button
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
-                                onClick={() => handleSendReminder(invoice)}
-                              >
-                                Send Reminder
-                              </button>
+                            <DropdownMenu.Item
+                              onClick={e => handleSendReminder(invoice, setInvoices, setSelectedInvoice, e)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                            >
+                              Send Reminder
                             </DropdownMenu.Item>
                             <DropdownMenu.Item asChild>
                               <button
