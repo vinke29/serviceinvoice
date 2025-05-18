@@ -43,4 +43,8 @@ yarn-error.log*
 **/credentials.json
 **/api-keys.json
 **/*.key
-**/*.pem 
+**/*.pem
+
+# Google Cloud SDK
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz 
