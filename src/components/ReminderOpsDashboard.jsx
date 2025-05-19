@@ -33,16 +33,55 @@ const ReminderOpsDashboard = () => {
       const user = auth.currentUser;
       if (user) {
         const invoices = await getInvoices(user.uid);
-        // Build reminders from overdue invoices
+        // Fetch agent config for reminder interval
+        let agentConfig = null;
+        if (typeof window !== 'undefined' && user.uid) {
+          try {
+            agentConfig = await import('../firebaseData').then(mod => mod.getAgentConfig(user.uid));
+          } catch (e) { agentConfig = null; }
+        }
+        const reminderInterval = agentConfig && agentConfig.reminderIntervalDays ? agentConfig.reminderIntervalDays : 3;
         const now = new Date();
+        // Helper to compare only the date part (ignore time)
+        const isOverdue = (dueDate) => {
+          const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+          const dueStr = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).toISOString().slice(0, 10);
+          return dueStr < todayStr;
+        };
         const remindersList = invoices
-          .filter(inv => {
-            const due = new Date(inv.dueDate);
-            return (inv.status === 'pending' || inv.status === 'overdue' || inv.status === 'Pending' || inv.status === 'Overdue') && due < now;
-          })
+          .filter(inv => inv.status !== 'scheduled' && inv.status !== 'Scheduled')
           .map(inv => {
             const due = new Date(inv.dueDate);
+            const created = inv.createdAt ? new Date(inv.createdAt) : due;
             const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+            let stage = '';
+            let type = '';
+            if (!isOverdue(due)) {
+              stage = '1st Invoice';
+              type = 'invoice';
+            } else if (daysOverdue > 14) {
+              stage = 'Final Notice';
+              type = 'escalation';
+            } else if (daysOverdue > 7) {
+              stage = '2nd Reminder';
+              type = 'reminder';
+            } else {
+              stage = '1st Reminder';
+              type = 'reminder';
+            }
+            // Next action: only if reminder interval is defined and type is invoice or reminder
+            let nextAction = '';
+            if (type === 'invoice' && reminderInterval) {
+              const next = new Date(created);
+              next.setDate(next.getDate() + reminderInterval);
+              nextAction = next;
+            } else if (type === 'reminder' && reminderInterval) {
+              const next = new Date(due);
+              next.setDate(next.getDate() + reminderInterval);
+              nextAction = next;
+            } else {
+              nextAction = null;
+            }
             return {
               id: inv.id,
               clientName: inv.clientName || 'Unknown',
@@ -50,9 +89,9 @@ const ReminderOpsDashboard = () => {
               amount: inv.amount,
               dueDate: due,
               daysOverdue,
-              type: daysOverdue > 14 ? 'escalation' : 'reminder',
-              stage: daysOverdue > 14 ? 'Final Notice' : daysOverdue > 7 ? '2nd Reminder' : '1st Reminder',
-              nextAction: null, // Could be calculated based on your agent config
+              type,
+              stage,
+              nextAction,
               status: 'active'
             };
           });
@@ -120,7 +159,7 @@ const ReminderOpsDashboard = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Reminders & Escalations</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track and manage all active reminders and escalations
+            Track and manage all active invoices, reminders and escalations
           </p>
         </div>
         <button
@@ -318,7 +357,7 @@ const ReminderOpsDashboard = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {format(reminder.nextAction, 'MMM d, yyyy')}
+                      {reminder.nextAction ? format(reminder.nextAction, 'MMM d, yyyy') : ''}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

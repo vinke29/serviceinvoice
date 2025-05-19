@@ -446,108 +446,31 @@ function Dashboard() {
   // Monthly chart data - include client estimated invoices in the data
   const monthlyData = months.map((month, i) => {
     // Get the year and month we're calculating for
-    const isCurrentYear = selectedYear === thisYear;
-    const isCurrentMonth = i === thisMonth;
-    const isFutureMonth = (selectedYear > thisYear) || (isCurrentYear && i > thisMonth);
-    
-    // Track which clients we've already counted to avoid double-counting
-    const processedClientIds = new Set();
-    
-    // Existing invoices for this month (based on due date) and shouldIncludeInvoice
+    // For each month, sum all invoices (including scheduled/recurring) with a due date in that month and year
     const monthInvoices = invoices.filter(inv => {
       try {
         const dueDate = new Date(inv.dueDate);
-        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear && shouldIncludeInvoice(inv);
+        return dueDate.getMonth() === i && dueDate.getFullYear() === selectedYear;
       } catch (e) {
         return false;
       }
     });
 
-    // Calculate the paid and unpaid amounts from existing invoices
+    // Calculate the paid and unpaid amounts from all invoices
     const paidAmount = monthInvoices
       .filter(inv => inv.status === 'paid' || inv.status === 'Paid')
       .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
-    
-    // First count all existing unpaid invoices
-    const unpaidFromExistingInvoices = monthInvoices
-      .filter(inv => 
-        inv.status !== 'paid' && 
-        inv.status !== 'Paid' &&
-        // Only include scheduled invoices for active clients
-        !(inv.status === 'scheduled' && (
-          clients.find(c => c.id === inv.clientId)?.status !== 'active' ||
-          clients.find(c => c.id === inv.clientId)?.onHold
-        ))
-      )
-      .reduce((sum, inv) => {
-        // Track which clients already have invoices to avoid double counting
-        if (inv.clientId) {
-          processedClientIds.add(inv.clientId);
-        }
-        return sum + Number(inv.amount || 0);
-      }, 0);
-    
-    // If this is a future month or current month, we need to check if clients have invoices that will be due then
-    let futureInvoiceAmount = 0;
-    
-    if (isFutureMonth || isCurrentMonth || selectedYear > thisYear) {
-      clients.forEach(client => {
-        // Only include active clients (not cancelled/on hold) for future revenue
-        if (client.status !== 'active' || client.onHold) return;
-        // Skip if we've already counted this client for this month
-        if (processedClientIds.has(client.id)) return;
-        // Get the client fee
-        const fee = Number(client.fee) || 0;
-        if (fee === 0) return; // Skip if no fee set
-        try {
-          let shouldCount = false;
-          // Special case: One-Time Charge
-          if (client.billingFrequency === 'one-time') {
-            if (client.firstInvoiceDate) {
-              const firstInvoiceDate = new Date(client.firstInvoiceDate);
-              if (firstInvoiceDate.getMonth() === i && firstInvoiceDate.getFullYear() === selectedYear) {
-                shouldCount = true;
-              }
-            }
-          } else {
-            // For first invoice date
-            if (client.firstInvoiceDate) {
-              const firstInvoiceDate = new Date(client.firstInvoiceDate);
-              // Check if the invoice date falls in this month
-              if (firstInvoiceDate.getMonth() === i && firstInvoiceDate.getFullYear() === selectedYear) {
-                shouldCount = true;
-              }
-            }
-            // Only check next invoice date if first invoice date didn't already match
-            if (!shouldCount && client.nextInvoiceDate) {
-              const nextInvoiceDate = new Date(client.nextInvoiceDate);
-              const frequency = client.billingFrequency || 'monthly';
-              // Check if this client would have an invoice in this month based on their schedule
-              if (hasInvoiceInMonth(nextInvoiceDate, frequency, selectedYear, i)) {
-                shouldCount = true;
-              }
-            }
-          }
-          // If either first or next invoice date matched, add to total and mark as processed
-          if (shouldCount) {
-            futureInvoiceAmount += fee;
-            processedClientIds.add(client.id);
-          }
-        } catch (e) {
-          console.error("Error calculating due dates:", e);
-        }
-      });
-    }
-    
-    // Total unpaid amount is existing unpaid invoices plus future estimated ones
-    const unpaidAmount = unpaidFromExistingInvoices + futureInvoiceAmount;
+
+    const unpaidAmount = monthInvoices
+      .filter(inv => inv.status !== 'paid' && inv.status !== 'Paid')
+      .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
 
     return {
       month,
       Paid: paidAmount,
       Unpaid: unpaidAmount
-    }
-  })
+    };
+  });
 
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading dashboard...</div>
