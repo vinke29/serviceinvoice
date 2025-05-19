@@ -37,3 +37,9 @@
   flex-direction: column;
   box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.1);
 }
+
+/* Override react-phone-number-input input background for onboarding */
+.PhoneInputInput {
+  background-color: #eff6ff !important; /* Tailwind's blue-50 */
+  color: #1e3a8a !important;           /* Tailwind's blue-900 */
+}

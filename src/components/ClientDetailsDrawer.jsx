@@ -166,7 +166,11 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                     </div>
                     <div>
                       <div className="text-sm text-secondary-500">Address</div>
-                      <div className="text-secondary-900">{displayData.address || '-'}</div>
+                      <div className="text-secondary-900">
+                        {displayData.street || displayData.city || displayData.state || displayData.postalCode || displayData.country
+                          ? [displayData.street, displayData.city, displayData.state, displayData.postalCode, displayData.country].filter(Boolean).join(', ')
+                          : (displayData.address || '-')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -386,6 +390,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
           </>
         ) : (
           <ClientForm
+            key={editMode ? (displayData.id ? displayData.id + '-edit' : 'new-edit') : (displayData.id || 'new')}
             client={displayData}
             onSubmit={handleSave}
             onCancel={() => setEditMode(false)}

@@ -16,6 +16,9 @@ import PersonWave from '../assets/person-wave.png'
 import { invoiceGenerationService } from '../services/invoiceGenerationService'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
+import { useJsApiLoader, Autocomplete } from '@react-google-maps/api'
 
 // Simplified steps focused on key workflows
 const steps = [
@@ -66,7 +69,7 @@ function OnboardingFlow({ onComplete }) {
     maxFollowups: 3,
     escalationDays: 14
   })
-  const [userInfo, setUserInfo] = useState({ firstName: '', lastName: '', phone: '', companyName: '' });
+  const [userInfo, setUserInfo] = useState({ firstName: '', lastName: '', phone: '', companyName: '', street: '', city: '', state: '', postalCode: '', country: '' });
   const [clientFormData, setClientFormData] = useState({
     name: '',
     email: '',
@@ -77,6 +80,11 @@ function OnboardingFlow({ onComplete }) {
   });
   const navigate = useNavigate()
   
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
+  });
+
   useEffect(() => {
     // Get user's name from email or authentication
     const user = auth.currentUser
@@ -144,9 +152,14 @@ function OnboardingFlow({ onComplete }) {
               firstName: userInfo.firstName,
               lastName: userInfo.lastName,
               phone: userInfo.phone,
-              companyName: userInfo.companyName, // Use companyName consistently
-              name: `${userInfo.firstName} ${userInfo.lastName}`, // Add full name field
-              email: auth.currentUser.email // Make sure email is set
+              companyName: userInfo.companyName,
+              name: `${userInfo.firstName} ${userInfo.lastName}`,
+              email: auth.currentUser.email,
+              street: userInfo.street,
+              city: userInfo.city,
+              state: userInfo.state,
+              postalCode: userInfo.postalCode,
+              country: userInfo.country
             }, { merge: true });
             
             console.log('Successfully saved user info to Firestore:', userInfo);
@@ -260,9 +273,14 @@ function OnboardingFlow({ onComplete }) {
         firstName: userInfo.firstName,
         lastName: userInfo.lastName,
         phone: userInfo.phone,
-        companyName: userInfo.companyName, // Use companyName consistently
-        name: `${userInfo.firstName} ${userInfo.lastName}`, // Add full name field
-        email: auth.currentUser.email // Make sure email is set
+        companyName: userInfo.companyName,
+        name: `${userInfo.firstName} ${userInfo.lastName}`,
+        email: auth.currentUser.email,
+        street: userInfo.street,
+        city: userInfo.city,
+        state: userInfo.state,
+        postalCode: userInfo.postalCode,
+        country: userInfo.country
       }, { merge: true });
       
       console.log('Final save of user info to Firestore successful:', userInfo);
@@ -408,13 +426,47 @@ function OnboardingFlow({ onComplete }) {
               {step.inputFields.map(field => (
                 <div key={field.name} className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
-                  <input
-                    type="text"
-                    value={userInfo[field.name]}
-                    onChange={e => setUserInfo(prev => ({ ...prev, [field.name]: e.target.value }))}
-                    placeholder={field.placeholder}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
-                  />
+                  {field.name === 'phone' ? (
+                    <PhoneInput
+                      international
+                      defaultCountry="US"
+                      value={userInfo.phone}
+                      onChange={phone => setUserInfo(prev => ({ ...prev, phone }))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                      required
+                    />
+                  ) : field.name === 'address' ? (
+                    isLoaded ? (
+                      <Autocomplete>
+                        <input
+                          type="text"
+                          value={userInfo.address || ''}
+                          onChange={e => setUserInfo(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder={field.placeholder}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                          required
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <input
+                        type="text"
+                        value={userInfo.address || ''}
+                        onChange={e => setUserInfo(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                        required
+                      />
+                    )
+                  ) : (
+                    <input
+                      type="text"
+                      value={userInfo[field.name]}
+                      onChange={e => setUserInfo(prev => ({ ...prev, [field.name]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                      required
+                    />
+                  )}
                 </div>
               ))}
               <div className="flex flex-row gap-3 justify-between mt-6 w-full">

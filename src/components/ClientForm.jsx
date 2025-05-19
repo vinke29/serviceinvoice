@@ -1,3 +1,4 @@
+import React from 'react'
 import { useState, useEffect } from 'react'
 import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns'
 import StatusChangeConfirmModal from './StatusChangeConfirmModal'
@@ -43,6 +44,17 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
     libraries: ['places'],
   });
 
+  const [addressFields, setAddressFields] = useState({
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: ''
+  });
+
+  const autocompleteRef = React.useRef(null);
+  const [autocomplete, setAutocomplete] = useState(null);
+
   useEffect(() => {
     if (client) {
       // Split existing name into firstName and lastName if it exists
@@ -55,6 +67,14 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
       }
       setFormData({ ...otherFields, firstName, lastName });
       setOriginalStatus(otherFields.status || 'active');
+      // Set address fields from client if present
+      setAddressFields({
+        street: client.street || '',
+        city: client.city || '',
+        state: client.state || '',
+        postalCode: client.postalCode || '',
+        country: client.country || ''
+      });
     } else {
       // Set customerSince to today on creation and status to active
       setFormData(f => ({ 
@@ -71,22 +91,23 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
   const handleSubmit = (e) => {
     e.preventDefault()
     // Combine firstName and lastName into name field and ensure dates are in correct format
-    const formattedData = {
+    const submissionData = {
       ...formData,
+      ...addressFields,
       name: `${formData.firstName} ${formData.lastName}`.trim(),
       customerSince: formData.customerSince ? formatDateString(formData.customerSince) : ''
     };
     // Remove firstName and lastName from final submission
-    delete formattedData.firstName;
-    delete formattedData.lastName;
+    delete submissionData.firstName;
+    delete submissionData.lastName;
 
     // Only show modal if status is being changed to on_hold or cancelled
     if ((formData.status === 'on_hold' || formData.status === 'cancelled') && formData.status !== originalStatus) {
-      setPendingData(formattedData)
+      setPendingData(submissionData)
       setShowStatusModal(true)
       return
     }
-    onSubmit(formattedData)
+    onSubmit(submissionData)
     showToast('success', isNewClient ? 'Client created successfully!' : 'Client updated successfully!')
   }
 
@@ -144,28 +165,83 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Street Name</label>
           {isLoaded ? (
-            <Autocomplete>
+            <Autocomplete
+              onLoad={ac => setAutocomplete(ac)}
+              onPlaceChanged={() => {
+                if (!autocomplete) return;
+                const place = autocomplete.getPlace();
+                console.log('Google Autocomplete place object:', place);
+                const components = place && place.address_components ? place.address_components : [];
+                if (!components.length) {
+                  alert('Could not extract address components from the selected place. Please try again or enter manually.');
+                  return;
+                }
+                const getComponent = (type) => {
+                  const comp = components.find(c => c.types.includes(type));
+                  return comp ? comp.long_name : '';
+                };
+                const street = [getComponent('street_number'), getComponent('route')].filter(Boolean).join(' ').trim();
+                setAddressFields({
+                  street,
+                  city: getComponent('locality') || getComponent('sublocality') || '',
+                  state: getComponent('administrative_area_level_1'),
+                  postalCode: getComponent('postal_code'),
+                  country: getComponent('country'),
+                });
+              }}
+            >
               <input
                 type="text"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                placeholder="Enter your street address..."
+                value={addressFields.street}
+                onChange={e => setAddressFields({
+                  street: e.target.value,
+                  city: '',
+                  state: '',
+                  postalCode: '',
+                  country: ''
+                })}
+                className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 required
+                placeholder="Start typing address..."
+                ref={autocompleteRef}
               />
             </Autocomplete>
           ) : (
             <input
               type="text"
-              value={formData.address}
-              onChange={e => setFormData({ ...formData, address: e.target.value })}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-              placeholder="Enter your street address..."
+              value={addressFields.street}
+              onChange={e => setAddressFields({
+                street: e.target.value,
+                city: '',
+                state: '',
+                postalCode: '',
+                country: ''
+              })}
+              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               required
+              placeholder="Street address"
             />
           )}
+          <div className="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+              <input type="text" value={addressFields.city} onChange={e => setAddressFields({ ...addressFields, city: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
+              <input type="text" value={addressFields.state} onChange={e => setAddressFields({ ...addressFields, state: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
+              <input type="text" value={addressFields.postalCode} onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+              <input type="text" value={addressFields.country} onChange={e => setAddressFields({ ...addressFields, country: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+            </div>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Customer Since</label>

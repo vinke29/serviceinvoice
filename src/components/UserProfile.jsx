@@ -32,6 +32,16 @@ function UserProfile() {
     libraries: ['places'],
   });
 
+  const [addressFields, setAddressFields] = useState({
+    street: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: ''
+  });
+
+  const [autocomplete, setAutocomplete] = useState(null);
+
   // Fetch user profile data when component mounts
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -68,6 +78,13 @@ function UserProfile() {
             taxId: userData.taxId || '',
             paymentInstructions: userData.paymentInstructions || '',
             logo: userData.logo || ''
+          });
+          setAddressFields({
+            street: userData.street || userData.address || '',
+            city: userData.city || '',
+            state: userData.state || '',
+            postalCode: userData.zip || userData.postalCode || '',
+            country: userData.country || ''
           });
         } else {
           console.log('No user profile found, checking for onboarding data');
@@ -160,6 +177,7 @@ function UserProfile() {
       // Ensure name field is set for consistency
       const dataToSave = {
         ...formData,
+        ...addressFields,
         name: `${formData.firstName} ${formData.lastName}`
       };
 
@@ -357,14 +375,48 @@ function UserProfile() {
           </div>
           
           <div className="col-span-2 mb-4">
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Address</label>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">Street</label>
             {isLoaded ? (
-              <Autocomplete>
+              <Autocomplete
+                onLoad={ac => setAutocomplete(ac)}
+                onPlaceChanged={() => {
+                  if (!autocomplete) return;
+                  const place = autocomplete.getPlace();
+                  const components = place && place.address_components ? place.address_components : [];
+                  if (!components.length) {
+                    alert('Could not extract address components from the selected place. Please try again or enter manually.');
+                    return;
+                  }
+                  const getComponent = (type) => {
+                    const comp = components.find(c => c.types.includes(type));
+                    return comp ? comp.long_name : '';
+                  };
+                  const street = [getComponent('street_number'), getComponent('route')].filter(Boolean).join(' ').trim();
+                  const city = getComponent('locality') || getComponent('sublocality') || '';
+                  const state = getComponent('administrative_area_level_1');
+                  const postalCode = getComponent('postal_code');
+                  const country = getComponent('country');
+                  setAddressFields({
+                    street,
+                    city,
+                    state,
+                    postalCode,
+                    country
+                  });
+                  setFormData(f => ({
+                    ...f,
+                    zip: postalCode,
+                    city,
+                    state,
+                    country
+                  }));
+                }}
+              >
                 <input
                   type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  name="street"
+                  value={addressFields.street}
+                  onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
                   placeholder="Enter your street address..."
                   required
@@ -373,9 +425,9 @@ function UserProfile() {
             ) : (
               <input
                 type="text"
-                name="address"
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                name="street"
+                value={addressFields.street}
+                onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
                 placeholder="Enter your street address..."
                 required
@@ -388,8 +440,8 @@ function UserProfile() {
             <input
               type="text"
               name="city"
-              value={formData.city}
-              onChange={handleInputChange}
+              value={addressFields.city}
+              onChange={e => setAddressFields({ ...addressFields, city: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -399,8 +451,8 @@ function UserProfile() {
             <input
               type="text"
               name="state"
-              value={formData.state}
-              onChange={handleInputChange}
+              value={addressFields.state}
+              onChange={e => setAddressFields({ ...addressFields, state: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -409,7 +461,7 @@ function UserProfile() {
             <label className="block text-sm font-medium text-gray-700 mb-1">ZIP / Postal Code</label>
             <input
               type="text"
-              name="zip"
+              name="postalCode"
               value={formData.zip}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -421,8 +473,8 @@ function UserProfile() {
             <input
               type="text"
               name="country"
-              value={formData.country}
-              onChange={handleInputChange}
+              value={addressFields.country}
+              onChange={e => setAddressFields({ ...addressFields, country: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
