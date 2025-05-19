@@ -17,6 +17,7 @@ import { invoiceGenerationService } from './services/invoiceGenerationService'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
+import { VERSION } from './version.js'
 
 // Custom toast styles - will override default react-toastify styling
 import './toast.css'
@@ -302,6 +303,9 @@ function App() {
             </Routes>
           </main>
           <InvoiceGeneratedNotification />
+          <footer className="w-full text-center text-xs text-secondary-400 py-2 bg-transparent fixed bottom-0 left-0 z-40 pointer-events-none select-none">
+            Version {VERSION}
+          </footer>
         </div>
       )}
     </Router>
