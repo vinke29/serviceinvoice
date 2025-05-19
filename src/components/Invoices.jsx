@@ -19,6 +19,9 @@ import { db } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
 
+const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
+console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
+
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
   // Create a date object from the checkDate

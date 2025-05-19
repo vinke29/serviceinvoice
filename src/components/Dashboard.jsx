@@ -460,7 +460,7 @@ function Dashboard() {
     const paidAmount = monthInvoices
       .filter(inv => inv.status === 'paid' || inv.status === 'Paid')
       .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
-
+    
     const unpaidAmount = monthInvoices
       .filter(inv => inv.status !== 'paid' && inv.status !== 'Paid')
       .reduce((sum, inv) => sum + Number(inv.amount || 0), 0);

@@ -5,6 +5,9 @@ import { auth, db } from '../firebase'
 import { pdfService } from '../services/pdfService'
 import { doc, getDoc } from 'firebase/firestore'
 import { format } from 'date-fns'
+import { functions, httpsCallable } from '../firebase'
+
+const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder')
 
 function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
   const [tab, setTab] = useState('details')
