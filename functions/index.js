@@ -477,7 +477,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     // Construct the email
     const msg = {
       to: client.email,
-      from: user.email || 'noreply@serviceinvoice.app',
+      from: 'billienowcontact@gmail.com',
       subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
       text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${invoice.totalAmount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${user.businessName || user.displayName}`,
       html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
