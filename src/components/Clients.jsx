@@ -598,8 +598,8 @@ function Clients() {
                     <div>
                       {(() => {
                         const recurringInvoice = getMostFrequentRecurringInvoice(client, invoices);
-                        return recurringInvoice ? (
-                          <span className="font-medium text-secondary-900">${recurringInvoice.amount ? `$${recurringInvoice.amount}` : '-'}</span>
+                        return recurringInvoice && recurringInvoice.amount !== undefined && recurringInvoice.amount !== null ? (
+                          <span className="font-medium text-secondary-900">${Number(recurringInvoice.amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                         ) : (
                           <span className="text-secondary-400">-</span>
                         );
