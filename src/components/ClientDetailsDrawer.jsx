@@ -107,6 +107,14 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
     return clientInvoices.find(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === 'one-time') || null;
   }
 
+  // Helper to format status with capital letter and spaces
+  const formatStatus = (status) => {
+    if (!status) return '';
+    return status
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Client: ${displayData?.name || ''}`}>
       {/* Tab Bar */}
