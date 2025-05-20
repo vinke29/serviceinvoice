@@ -557,7 +557,9 @@ function AIAgent() {
 
       {/* Show onboarding wizard if not configured */}
       {!agentConfig && (
-        <OnboardingConfig onSave={handleSaveConfig} initialConfig={agentConfig} />
+        <div className="max-w-3xl w-full mx-auto">
+          <OnboardingConfig onSave={handleSaveConfig} initialConfig={agentConfig} />
+        </div>
       )}
 
       {/* Show summary if configured and not editing */}
