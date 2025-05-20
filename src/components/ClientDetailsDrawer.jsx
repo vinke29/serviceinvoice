@@ -121,26 +121,28 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Client: ${displayData?.name || ''}`}>
       {/* Tab Bar */}
-      <div className="flex border-b border-secondary-200 mb-4">
-        <button
-          className={`px-4 py-2 font-medium ${tab === 'info' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
-          onClick={() => setTab('info')}
-        >
-          Client Info
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${tab === 'billing' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
-          onClick={() => setTab('billing')}
-        >
-          Billing
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${tab === 'history' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
-          onClick={() => setTab('history')}
-        >
-          History
-        </button>
-      </div>
+      {!editMode && (
+        <div className="flex border-b border-secondary-200 mb-4">
+          <button
+            className={`px-4 py-2 font-medium ${tab === 'info' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
+            onClick={() => setTab('info')}
+          >
+            Client Info
+          </button>
+          <button
+            className={`px-4 py-2 font-medium ${tab === 'billing' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
+            onClick={() => setTab('billing')}
+          >
+            Billing
+          </button>
+          <button
+            className={`px-4 py-2 font-medium ${tab === 'history' ? 'border-b-2 border-primary-600 text-primary-700' : 'text-secondary-600'}`}
+            onClick={() => setTab('history')}
+          >
+            History
+          </button>
+        </div>
+      )}
       <div className="space-y-8">
         {!editMode ? (
           <>
