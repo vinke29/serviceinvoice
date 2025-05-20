@@ -290,7 +290,7 @@ function OnboardingConfig({ onSave, initialConfig }) {
   ];
 
   return (
-    <div className="max-w-3xl w-full mx-auto bg-white rounded-2xl shadow-soft p-6 md:p-10 mt-8">
+    <div className="max-w-5xl w-full mx-auto bg-white rounded-2xl shadow-soft p-6 md:p-8 mt-8">
       <h2 className="text-2xl font-bold text-secondary-900 mb-6">Let's set up how you want to handle payments and reminders</h2>
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
