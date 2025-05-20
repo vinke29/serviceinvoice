@@ -298,7 +298,6 @@ function UserProfile() {
                 value={formData.phone}
                 onChange={phone => setFormData({ ...formData, phone })}
                 className="w-full"
-                required
               />
             </div>
           </div>
@@ -416,10 +415,22 @@ function UserProfile() {
                   type="text"
                   name="street"
                   value={addressFields.street}
-                  onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
+                  onChange={e => {
+                    const value = e.target.value;
+                    setAddressFields(value
+                      ? { ...addressFields, street: value }
+                      : { street: '', city: '', state: '', postalCode: '', country: '' }
+                    );
+                    setFormData(f => ({
+                      ...f,
+                      zip: value ? addressFields.postalCode : '',
+                      city: value ? addressFields.city : '',
+                      state: value ? addressFields.state : '',
+                      country: value ? addressFields.country : ''
+                    }));
+                  }}
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
                   placeholder="Enter your street address..."
-                  required
                 />
               </Autocomplete>
             ) : (
@@ -427,10 +438,22 @@ function UserProfile() {
                 type="text"
                 name="street"
                 value={addressFields.street}
-                onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
+                onChange={e => {
+                  const value = e.target.value;
+                  setAddressFields(value
+                    ? { ...addressFields, street: value }
+                    : { street: '', city: '', state: '', postalCode: '', country: '' }
+                  );
+                  setFormData(f => ({
+                    ...f,
+                    zip: value ? addressFields.postalCode : '',
+                    city: value ? addressFields.city : '',
+                    state: value ? addressFields.state : '',
+                    country: value ? addressFields.country : ''
+                  }));
+                }}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
                 placeholder="Enter your street address..."
-                required
               />
             )}
           </div>
