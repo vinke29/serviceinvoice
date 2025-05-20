@@ -21,7 +21,9 @@ import { toast } from 'react-hot-toast';
 import { useInvoices } from './InvoicesContext';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
+const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
 console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
+console.log("sendInvoiceEscalation is defined:", typeof sendInvoiceEscalation);
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
@@ -1252,6 +1254,51 @@ function Invoices() {
     }
   };
 
+  // Add handler to send escalation email
+  async function handleSendEscalation(invoice, setInvoices, setSelectedInvoice, e) {
+    if (e) e.stopPropagation();
+    showToast('info', 'Sending escalation...', { autoClose: false, toastId: 'sending-escalation' });
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.dismiss('sending-escalation');
+        showToast('error', 'You must be logged in to send escalations.');
+        throw new Error('Not authenticated');
+      }
+      await user.getIdToken(true);
+      const client = clients.find(c => c.id === invoice.clientId);
+      if (!client) {
+        toast.dismiss('sending-escalation');
+        showToast('error', 'Client information not found.');
+        throw new Error('Client not found');
+      }
+      const result = await sendInvoiceEscalation({
+        userId: user.uid,
+        invoiceId: invoice.id,
+        clientId: client.id
+      });
+      toast.dismiss('sending-escalation');
+      showToast('success', 'Escalation email sent!');
+    } catch (error) {
+      toast.dismiss('sending-escalation');
+      if (error.code === "functions/resource-exhausted") {
+        showToast('error', 'Email sending limit reached. Please upgrade your SendGrid plan or try again later.');
+      } else if (error.code === "functions/unauthenticated") {
+        showToast('error', 'Authentication failed. Please log out and log back in.');
+      } else if (error.code === "functions/permission-denied") {
+        showToast('error', 'You do not have permission to send this escalation.');
+      } else if (error.code === "functions/not-found") {
+        showToast('error', 'The invoice or client information could not be found.');
+      } else if (error.code === "functions/invalid-argument") {
+        showToast('error', 'Invalid information provided. Please try again.');
+      } else if (error.code && error.code.startsWith("functions/")) {
+        showToast('error', `Server error: ${error.message || "Unknown error"}`);
+      } else {
+        showToast('error', `Failed to send escalation: ${error.message || "Unknown error"}`);
+      }
+    }
+  }
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1493,7 +1540,15 @@ function Invoices() {
                                 Send Reminder
                               </button>
                             </DropdownMenu.Item>
-                            {/* Optionally add Send Escalation here if available */}
+                            <DropdownMenu.Item asChild>
+                              <button
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                                onClick={e => { e.stopPropagation(); handleSendEscalation(invoice, setInvoices, setSelectedInvoice, e); }}
+                                disabled={invoice.activity && invoice.activity.some(a => a.type === 'escalation_sent')}
+                              >
+                                Send Escalation
+                              </button>
+                            </DropdownMenu.Item>
                           </DropdownMenu.Content>
                         </DropdownMenu.Root>
                       )}

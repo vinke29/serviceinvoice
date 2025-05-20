@@ -60,14 +60,18 @@ const ReminderOpsDashboard = () => {
           const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
           let stage = '';
           let type = '';
-          // Use activity log to determine stage
           let reminderCount = 0;
           let invoiceSentDate = null;
+          let escalationSent = false;
           if (Array.isArray(inv.activity)) {
             reminderCount = inv.activity.filter(a => a.type === 'reminder_sent').length;
             invoiceSentDate = inv.activity.find(a => a.type === 'invoice_sent')?.date;
+            escalationSent = inv.activity.some(a => a.type === 'escalation_sent');
           }
-          if (reminderCount === 0) {
+          if (escalationSent) {
+            stage = 'Escalation Sent';
+            type = 'escalation';
+          } else if (reminderCount === 0) {
             stage = 'Invoice Sent';
             type = 'invoice';
           } else {
