@@ -13,6 +13,7 @@ import clsx from 'clsx';
 import { getClients, addClient, updateClient, deleteClient, getInvoices, updateClientStatus } from '../firebaseData';
 import { auth } from '../firebase';
 import { useInvoices } from './InvoicesContext';
+import { showToast } from '../utils/toast.jsx';
 
 const STATUS_OPTIONS = ['Active', 'Delinquent', 'Inactive']
 const ON_HOLD_OPTIONS = ['All', 'On Hold', 'Not On Hold']
@@ -232,6 +233,8 @@ function Clients() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
   const { refreshInvoices } = useInvoices();
+  // Add state for duplicate modal
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   // Load clients and invoices from Firestore on mount
   useEffect(() => {
@@ -272,11 +275,21 @@ function Clients() {
   const handleAddClient = async (clientData) => {
     const user = auth.currentUser
     if (user) {
+      // Check for existing client with same email
+      const duplicate = clients.find(
+        c => c.email.toLowerCase() === clientData.email.toLowerCase()
+      );
+      if (duplicate) {
+        setShowForm(false);
+        setShowDuplicateModal(true);
+        return;
+      }
       let clientToAdd = { ...clientData, status: clientData.status ? clientData.status.toLowerCase() : 'active' }
       const newClient = await addClient(user.uid, clientToAdd)
       await refreshData() // Refresh data after adding client
+      setShowForm(false)
+      showToast('success', 'Client created successfully!');
     }
-    setShowForm(false)
   }
 
   // Edit client
@@ -751,6 +764,24 @@ function Clients() {
                 }}
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Email Modal */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Duplicate Email</h3>
+            <p className="text-secondary-700 mb-4">A client with this email address already exists. Please use a different email or update the existing client.</p>
+            <div className="flex justify-end">
+              <button
+                className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                onClick={() => setShowDuplicateModal(false)}
+              >
+                OK
               </button>
             </div>
           </div>
