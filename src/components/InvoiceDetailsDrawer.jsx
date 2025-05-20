@@ -9,7 +9,7 @@ import { functions, httpsCallable } from '../firebase'
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder')
 
-function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
+function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
   const [tab, setTab] = useState('details')
   const [agentConfig, setAgentConfig] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
@@ -236,6 +236,17 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
           </div>
         )}
       </div>
+      {/* Add Edit Invoice button at the bottom */}
+      {typeof onEditInvoice === 'function' && (
+        <div className="mt-8 flex justify-end">
+          <button
+            className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 text-lg font-medium"
+            onClick={() => onEditInvoice(invoice)}
+          >
+            Edit Invoice
+          </button>
+        </div>
+      )}
     </Drawer>
   )
 }

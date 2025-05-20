@@ -1749,6 +1749,11 @@ function Invoices() {
         isOpen={showInvoiceDrawer}
         onClose={() => setShowInvoiceDrawer(false)}
         invoice={selectedInvoice}
+        onEditInvoice={invoice => {
+          setEditingInvoice(invoice);
+          setShowForm(true);
+          setShowInvoiceDrawer(false);
+        }}
       />
 
       {successMessage && (

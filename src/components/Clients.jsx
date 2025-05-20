@@ -228,6 +228,8 @@ function Clients() {
   const [onHoldFilter, setOnHoldFilter] = useState('All')
   const [loading, setLoading] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
 
   // Load clients and invoices from Firestore on mount
   useEffect(() => {
@@ -629,12 +631,28 @@ function Clients() {
                   <td className="py-4 px-4 text-right">
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          handleDeleteClient(client.id);
+                          setEditingClient(client);
+                          setShowForm(true);
+                        }}
+                        className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
+                        title="Edit"
+                        aria-label="Edit"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setClientToDelete(client);
+                          setShowDeleteModal(true);
                         }}
                         className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
                         title="Delete"
+                        aria-label="Delete"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -679,6 +697,37 @@ function Clients() {
         invoices={invoices}
         onUpdate={handleEditClient}
       />
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Delete Client</h3>
+            <p className="text-secondary-700 mb-4">Are you sure you want to delete this client? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-secondary-100 text-secondary-700 hover:bg-secondary-200"
+                onClick={() => { setShowDeleteModal(false); setClientToDelete(null); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                onClick={async () => {
+                  if (clientToDelete) {
+                    const user = auth.currentUser;
+                    await deleteClient(user.uid, clientToDelete.id);
+                    setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
+                    setShowDeleteModal(false);
+                    setClientToDelete(null);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
