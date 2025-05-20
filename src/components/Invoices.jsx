@@ -539,6 +539,7 @@ function Invoices() {
   const [successMessage, setSuccessMessage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1336,58 +1337,82 @@ function Invoices() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-secondary-900">Invoices</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Add Invoice</span>
-        </button>
-      </div>
-      {/* Filter Bar */}
-      <div className="flex flex-wrap gap-4 items-end bg-white rounded-xl shadow-soft p-4 mb-2">
-        {/* Status Filter */}
-        <div>
-          <label className="block text-xs font-medium text-secondary-700 mb-1">Status</label>
-          <MultiSelectDropdown
-            label="Status"
-            options={INVOICE_STATUS_OPTIONS}
-            selected={statusFilter}
-            setSelected={setStatusFilter}
-          />
-        </div>
-        {/* Invoice Date Filter */}
-        <div>
-          <label className="block text-xs font-medium text-secondary-700 mb-1">Invoice Date</label>
-          <DateRangePopover
-            label="Invoice Date"
-            value={invoiceDateRange}
-            setValue={setInvoiceDateRange}
-          />
-        </div>
-        {/* Due Date Filter */}
-        <div>
-          <label className="block text-xs font-medium text-secondary-700 mb-1">Due Date</label>
-          <DateRangePopover
-            label="Due Date"
-            value={dateRange}
-            setValue={setDateRange}
-          />
-        </div>
-        {/* Clear Filters Button */}
-        <div>
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => {
-              setStatusFilter([]);
-              setDateRange([undefined, undefined]);
-              setInvoiceDateRange([undefined, undefined]);
-            }}
-            className="px-3 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 text-sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors duration-200 flex items-center space-x-2"
           >
-            Clear Filters
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+            </svg>
+            <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
           </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Add Invoice</span>
+          </button>
+        </div>
+      </div>
+      <div className={`transition-all duration-300 overflow-hidden ${showFilters ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="bg-white rounded-xl shadow-soft p-6 mb-4">
+          <div className="mb-6 flex justify-between items-center">
+            <h3 className="text-lg font-medium text-secondary-800">Filters</h3>
+            <button
+              onClick={() => {
+                setStatusFilter([])
+                setDateRange([undefined, undefined])
+                setInvoiceDateRange([undefined, undefined])
+              }}
+              className="px-3 py-1 text-sm bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200"
+            >
+              Clear All
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Group 1: Invoice Status */}
+            <div className="space-y-2 border border-secondary-100 rounded-lg overflow-hidden">
+              <h4 className="text-sm font-semibold text-secondary-800 border-b border-secondary-200 pb-2 uppercase tracking-wider bg-secondary-50 px-4 py-2">Invoice Status</h4>
+              <div className="space-y-4 p-4">
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Status</label>
+                  <MultiSelectDropdown
+                    label="Status"
+                    options={INVOICE_STATUS_OPTIONS}
+                    selected={statusFilter}
+                    setSelected={setStatusFilter}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Group 2: Invoice Dates */}
+            <div className="space-y-2 border border-secondary-100 rounded-lg overflow-hidden">
+              <h4 className="text-sm font-semibold text-secondary-800 border-b border-secondary-200 pb-2 uppercase tracking-wider bg-secondary-50 px-4 py-2">Invoice Dates</h4>
+              <div className="space-y-4 p-4">
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Invoice Date</label>
+                  <DateRangePopover
+                    label="Invoice Date"
+                    value={invoiceDateRange}
+                    setValue={setInvoiceDateRange}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Due Date</label>
+                  <DateRangePopover
+                    label="Due Date"
+                    value={dateRange}
+                    setValue={setDateRange}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* (Optional) Add more filter groups here if needed */}
+          </div>
         </div>
       </div>
 
