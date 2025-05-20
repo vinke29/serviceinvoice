@@ -16,6 +16,9 @@ import { auth } from '../firebase';
 const STATUS_OPTIONS = ['Active', 'Delinquent', 'Inactive']
 const ON_HOLD_OPTIONS = ['All', 'On Hold', 'Not On Hold']
 
+// Helper: Recurring frequency order (most frequent first)
+const RECURRING_ORDER = ['weekly', 'monthly', 'quarterly', 'biannually', 'annually'];
+
 function ClientCard({ client }) {
   return (
     <div className="bg-white rounded-xl shadow-soft p-6 hover:shadow-md transition-shadow duration-200">
@@ -180,6 +183,19 @@ const formatStatus = (status) => {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
 };
+
+// Helper: Get the most frequent recurring billing type for a client
+function getClientBillingInfo(client, invoices) {
+  const clientInvoices = invoices.filter(inv => inv.clientId === client.id);
+  // Find the most frequent recurring type
+  for (const freq of RECURRING_ORDER) {
+    if (clientInvoices.some(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === freq)) {
+      return formatBillingFrequency(freq);
+    }
+  }
+  // If no recurring, return One-Time
+  return 'One-Time';
+}
 
 function Clients() {
   const [clients, setClients] = useState([])
@@ -574,9 +590,7 @@ function Clients() {
                       ) : (
                         <span className="text-secondary-400">-</span>
                       )}
-                      {client.billingFrequency && (
-                        <p className="text-sm text-secondary-600">{formatBillingFrequency(client.billingFrequency)}</p>
-                      )}
+                      <p className="text-sm text-secondary-600">{getClientBillingInfo(client, invoices)}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4">
