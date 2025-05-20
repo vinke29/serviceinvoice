@@ -53,9 +53,11 @@ function ClientCard({ client }) {
 // Modern Filter Bar Components
 function MultiSelectDropdown({ label, options, selected, setSelected }) {
   const handleToggle = (option) => {
-    setSelected(selected.includes(option)
-      ? selected.filter((o) => o !== option)
-      : [...selected, option]);
+    // Always store selected values as lowercase
+    const lowerOption = option.toLowerCase();
+    setSelected(selected.includes(lowerOption)
+      ? selected.filter((o) => o !== lowerOption)
+      : [...selected, lowerOption]);
   };
   return (
     <DropdownMenu.Root>
@@ -64,7 +66,7 @@ function MultiSelectDropdown({ label, options, selected, setSelected }) {
           className="w-full min-w-[160px] px-3 py-2 border border-secondary-200 rounded-lg flex items-center justify-between bg-white text-sm text-secondary-900 hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
           type="button"
         >
-          <span className="truncate">{selected.length ? selected.join(', ') : `Select ${label}`}</span>
+          <span className="truncate">{selected.length ? selected.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ') : `Select ${label}`}</span>
           <ChevronDownIcon className="ml-2 w-4 h-4 text-secondary-500 flex-shrink-0" />
         </button>
       </DropdownMenu.Trigger>
@@ -76,7 +78,7 @@ function MultiSelectDropdown({ label, options, selected, setSelected }) {
               onClick={() => handleToggle(option)}
             >
               <Checkbox.Root
-                checked={selected.includes(option)}
+                checked={selected.includes(option.toLowerCase())}
                 tabIndex={-1}
                 className="w-4 h-4 border border-secondary-300 rounded flex items-center justify-center bg-white pointer-events-none"
                 id={`${label}-${option}`}
