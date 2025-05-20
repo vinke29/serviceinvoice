@@ -265,7 +265,10 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                         {(() => {
                           const recurringInvoice = getMostFrequentRecurringInvoice(displayData, invoices);
                           if (recurringInvoice && recurringInvoice.billingFrequency && recurringInvoice.billingFrequency.toLowerCase() !== 'one-time') {
-                            return recurringInvoice.nextInvoiceDate ? `Next invoice on ${formatDate(recurringInvoice.nextInvoiceDate)}` : 'Recurring billing';
+                            if (recurringInvoice.nextInvoiceDate) {
+                              return formatDate(recurringInvoice.nextInvoiceDate);
+                            }
+                            return 'Recurring billing';
                           }
                           return 'No recurring billing';
                         })()}
