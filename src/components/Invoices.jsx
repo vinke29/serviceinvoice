@@ -1306,135 +1306,133 @@ function Invoices() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-secondary-900">Invoices</h2>
-        <div className="w-full max-w-xs md:max-w-none md:w-auto flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 items-start md:items-center">
-          {/* Mobile: Inline Add Invoice and overflow menu */}
-          <div className="flex flex-col space-y-2 md:flex-row md:space-x-2 md:space-y-0 items-start md:items-center">
-            <div className="flex flex-row items-center justify-end w-full md:hidden space-x-2 mt-2">
-              <button
-                onClick={() => setShowForm(true)}
-                className="px-5 py-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2 text-base font-medium shadow-sm"
-                style={{ minWidth: 'auto' }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add Invoice</span>
-              </button>
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger asChild>
-                  <button className="p-2 rounded-full bg-secondary-100 text-secondary-700 hover:bg-secondary-200 focus:outline-none ml-1">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <circle cx="12" cy="5" r="2" />
-                      <circle cx="12" cy="12" r="2" />
-                      <circle cx="12" cy="19" r="2" />
+        <div className="flex flex-row items-center space-x-2 md:space-x-2">
+          {/* Mobile: right-aligned actions */}
+          <div className="flex flex-row items-center space-x-2 md:hidden">
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-5 py-2 bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2 text-base font-medium shadow-sm"
+              style={{ minWidth: 'auto' }}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Invoice</span>
+            </button>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="p-2 rounded-full bg-secondary-100 text-secondary-700 hover:bg-secondary-200 focus:outline-none ml-1">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
+                <DropdownMenu.Item asChild>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
                     </svg>
+                    <span>Show Filters</span>
                   </button>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
-                  <DropdownMenu.Item asChild>
-                    <button
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
-                      onClick={() => setShowFilters(!showFilters)}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-                      </svg>
-                      <span>Show Filters</span>
-                    </button>
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item asChild>
-                    <button
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
-                      onClick={() => {
-                        const now = new Date();
-                        const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-                        const columns = [
-                          'invoiceNumber', 'clientName', 'amount', 'description', 'date', 'dueDate', 'status', 'billingFrequency', 'isRecurring'
-                        ];
-                        const data = invoices.filter(inv => {
-                          if (inv.status === 'scheduled') return false;
-                          const invDate = new Date(inv.date);
-                          return invDate >= twelveMonthsAgo && invDate <= now;
-                        }).map(inv => ({
-                          invoiceNumber: inv.invoiceNumber,
-                          clientName: inv.clientName,
-                          amount: inv.amount,
-                          description: inv.description,
-                          date: inv.date,
-                          dueDate: inv.dueDate,
-                          status: inv.status,
-                          billingFrequency: inv.billingFrequency,
-                          isRecurring: inv.isRecurring ? 'Yes' : 'No'
-                        }));
-                        exportToCSV({ data, filename: `invoices-${new Date().toISOString().slice(0,10)}.csv`, columns });
-                      }}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        <path d="M8 16h8M8 12h8M8 8h8" />
-                      </svg>
-                      <span>Export to CSV</span>
-                    </button>
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Root>
-            </div>
-            {/* Desktop: All buttons visible */}
-            <div className="hidden md:flex flex-row space-x-2 items-center">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors duration-200 flex items-center space-x-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-                </svg>
-                <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
-              </button>
-              <button
-                onClick={() => setShowForm(true)}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add Invoice</span>
-              </button>
-              <button
-                onClick={() => {
-                  const now = new Date();
-                  const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-                  const columns = [
-                    'invoiceNumber', 'clientName', 'amount', 'description', 'date', 'dueDate', 'status', 'billingFrequency', 'isRecurring'
-                  ];
-                  const data = invoices.filter(inv => {
-                    if (inv.status === 'scheduled') return false;
-                    const invDate = new Date(inv.date);
-                    return invDate >= twelveMonthsAgo && invDate <= now;
-                  }).map(inv => ({
-                    invoiceNumber: inv.invoiceNumber,
-                    clientName: inv.clientName,
-                    amount: inv.amount,
-                    description: inv.description,
-                    date: inv.date,
-                    dueDate: inv.dueDate,
-                    status: inv.status,
-                    billingFrequency: inv.billingFrequency,
-                    isRecurring: inv.isRecurring ? 'Yes' : 'No'
-                  }));
-                  exportToCSV({ data, filename: `invoices-${new Date().toISOString().slice(0,10)}.csv`, columns });
-                }}
-                className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 flex items-center space-x-2"
-                aria-label="Export to CSV"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  <path d="M8 16h8M8 12h8M8 8h8" />
-                </svg>
-                <span className="hidden sm:inline">Export to CSV</span>
-              </button>
-            </div>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
+                    onClick={() => {
+                      const now = new Date();
+                      const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+                      const columns = [
+                        'invoiceNumber', 'clientName', 'amount', 'description', 'date', 'dueDate', 'status', 'billingFrequency', 'isRecurring'
+                      ];
+                      const data = invoices.filter(inv => {
+                        if (inv.status === 'scheduled') return false;
+                        const invDate = new Date(inv.date);
+                        return invDate >= twelveMonthsAgo && invDate <= now;
+                      }).map(inv => ({
+                        invoiceNumber: inv.invoiceNumber,
+                        clientName: inv.clientName,
+                        amount: inv.amount,
+                        description: inv.description,
+                        date: inv.date,
+                        dueDate: inv.dueDate,
+                        status: inv.status,
+                        billingFrequency: inv.billingFrequency,
+                        isRecurring: inv.isRecurring ? 'Yes' : 'No'
+                      }));
+                      exportToCSV({ data, filename: `invoices-${new Date().toISOString().slice(0,10)}.csv`, columns });
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <path d="M8 16h8M8 12h8M8 8h8" />
+                    </svg>
+                    <span>Export to CSV</span>
+                  </button>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          </div>
+          {/* Desktop: all actions visible, left-aligned */}
+          <div className="hidden md:flex flex-row space-x-2 items-center">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors duration-200 flex items-center space-x-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+              </svg>
+              <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Add Invoice</span>
+            </button>
+            <button
+              onClick={() => {
+                const now = new Date();
+                const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+                const columns = [
+                  'invoiceNumber', 'clientName', 'amount', 'description', 'date', 'dueDate', 'status', 'billingFrequency', 'isRecurring'
+                ];
+                const data = invoices.filter(inv => {
+                  if (inv.status === 'scheduled') return false;
+                  const invDate = new Date(inv.date);
+                  return invDate >= twelveMonthsAgo && invDate <= now;
+                }).map(inv => ({
+                  invoiceNumber: inv.invoiceNumber,
+                  clientName: inv.clientName,
+                  amount: inv.amount,
+                  description: inv.description,
+                  date: inv.date,
+                  dueDate: inv.dueDate,
+                  status: inv.status,
+                  billingFrequency: inv.billingFrequency,
+                  isRecurring: inv.isRecurring ? 'Yes' : 'No'
+                }));
+                exportToCSV({ data, filename: `invoices-${new Date().toISOString().slice(0,10)}.csv`, columns });
+              }}
+              className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 flex items-center space-x-2"
+              aria-label="Export to CSV"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path d="M8 16h8M8 12h8M8 8h8" />
+              </svg>
+              <span className="hidden sm:inline">Export to CSV</span>
+            </button>
           </div>
         </div>
       </div>
