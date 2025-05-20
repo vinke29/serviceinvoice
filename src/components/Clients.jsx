@@ -268,13 +268,21 @@ function Clients() {
 
   // Add client
   const handleAddClient = async (clientData) => {
-    const user = auth.currentUser
+    const user = auth.currentUser;
     if (user) {
-      let clientToAdd = { ...clientData, status: clientData.status ? clientData.status.toLowerCase() : 'active' }
-      const newClient = await addClient(user.uid, clientToAdd)
-      await refreshData() // Refresh data after adding client
+      // Check for existing client with same email
+      const duplicate = clients.find(
+        c => c.email.toLowerCase() === clientData.email.toLowerCase()
+      );
+      if (duplicate) {
+        alert('A client with this email already exists.');
+        return;
+      }
+      let clientToAdd = { ...clientData, status: clientData.status ? clientData.status.toLowerCase() : 'active' };
+      const newClient = await addClient(user.uid, clientToAdd);
+      await refreshData();
     }
-    setShowForm(false)
+    setShowForm(false);
   }
 
   // Edit client
