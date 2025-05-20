@@ -702,7 +702,19 @@ function Clients() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
             <h3 className="text-lg font-semibold text-secondary-900 mb-2">Delete Client</h3>
-            <p className="text-secondary-700 mb-4">Are you sure you want to delete this client? This action cannot be undone.</p>
+            {(() => {
+              const activeInvoices = invoices.filter(inv => inv.clientId === clientToDelete?.id && ['pending', 'unpaid'].includes((inv.status || '').toLowerCase()));
+              if (activeInvoices.length > 0) {
+                return (
+                  <div className="mb-4">
+                    <p className="text-red-600 font-medium mb-2">This client has {activeInvoices.length} active invoice{activeInvoices.length > 1 ? 's' : ''}.</p>
+                    <p className="text-secondary-700">You must resolve or delete all active invoices before deleting this client.</p>
+                  </div>
+                );
+              } else {
+                return <p className="text-secondary-700 mb-4">Are you sure you want to delete this client? This action cannot be undone.</p>;
+              }
+            })()}
             <div className="flex justify-end space-x-2">
               <button
                 className="px-4 py-2 rounded-lg bg-secondary-100 text-secondary-700 hover:bg-secondary-200"
@@ -711,9 +723,17 @@ function Clients() {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                className={`px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 ${(() => {
+                  const activeInvoices = invoices.filter(inv => inv.clientId === clientToDelete?.id && ['pending', 'unpaid'].includes((inv.status || '').toLowerCase()));
+                  return activeInvoices.length > 0 ? 'opacity-50 cursor-not-allowed' : '';
+                })()}`}
+                disabled={(() => {
+                  const activeInvoices = invoices.filter(inv => inv.clientId === clientToDelete?.id && ['pending', 'unpaid'].includes((inv.status || '').toLowerCase()));
+                  return activeInvoices.length > 0;
+                })()}
                 onClick={async () => {
-                  if (clientToDelete) {
+                  const activeInvoices = invoices.filter(inv => inv.clientId === clientToDelete?.id && ['pending', 'unpaid'].includes((inv.status || '').toLowerCase()));
+                  if (clientToDelete && activeInvoices.length === 0) {
                     const user = auth.currentUser;
                     await deleteClient(user.uid, clientToDelete.id);
                     setClients(prev => prev.filter(c => c.id !== clientToDelete.id));
