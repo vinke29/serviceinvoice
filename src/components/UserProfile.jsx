@@ -3,8 +3,8 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth, db, storage } from '../firebase';
 import { showToast } from '../utils/toast.jsx';
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api'
 
 function UserProfile() {
@@ -291,15 +291,13 @@ function UserProfile() {
           
           <div className="mb-4">
             <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
-            <div className="flex items-center bg-white border border-secondary-200 rounded-lg shadow-sm px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 transition-all">
-              <PhoneInput
-                international
-                defaultCountry="US"
-                value={formData.phone}
-                onChange={phone => setFormData({ ...formData, phone })}
-                className="w-full"
-              />
-            </div>
+            <PhoneInput
+              country={'us'}
+              value={formData.phone}
+              onChange={phone => setFormData({ ...formData, phone })}
+              inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              containerClass="w-full"
+            />
           </div>
 
           {/* Business Information */}

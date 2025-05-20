@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api'
 
 function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, setFormData }) {
@@ -86,12 +86,11 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
       <div>
         <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
         <PhoneInput
-          international
-          defaultCountry="US"
+          country={'us'}
           value={data.phone}
           onChange={phone => setData({ ...data, phone })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          required
+          inputClass="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          containerClass="w-full"
         />
       </div>
       <div>

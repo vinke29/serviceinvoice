@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react'
 import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns'
 import StatusChangeConfirmModal from './StatusChangeConfirmModal'
 import { showToast } from '../utils/toast.jsx'
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import { GoogleMap, useJsApiLoader, Autocomplete } from '@react-google-maps/api'
 
 // Helper function to normalize dates to YYYY-MM-DD format without timezone issues
@@ -153,16 +153,13 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
-          <div className="flex items-center bg-white border border-secondary-200 rounded-lg shadow-sm px-3 py-2 focus-within:ring-2 focus-within:ring-primary-500 transition-all">
-            <PhoneInput
-              international
-              defaultCountry="US"
-              value={formData.phone}
-              onChange={phone => setFormData({ ...formData, phone })}
-              className="w-full"
-              required
-            />
-          </div>
+          <PhoneInput
+            country={'us'}
+            value={formData.phone}
+            onChange={phone => setFormData({ ...formData, phone })}
+            inputClass="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            containerClass="w-full"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Street Name</label>
