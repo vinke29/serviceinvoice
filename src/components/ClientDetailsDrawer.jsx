@@ -115,6 +115,23 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
       .replace(/\b\w/g, c => c.toUpperCase());
   };
 
+  // Helper: Get the next upcoming invoice date for a client
+  function getNextUpcomingInvoiceDate(client, invoices) {
+    const now = new Date();
+    const clientInvoices = invoices.filter(inv => inv.clientId === client.id && (inv.status === 'pending' || inv.status === 'scheduled'));
+    const futureInvoices = clientInvoices.filter(inv => {
+      const date = new Date(inv.date || inv.createdAt);
+      return date >= now;
+    });
+    if (futureInvoices.length === 0) return null;
+    // Return the soonest future invoice
+    const nextInvoice = futureInvoices.reduce((min, inv) => {
+      const date = new Date(inv.date || inv.createdAt);
+      return (!min || date < new Date(min.date || min.createdAt)) ? inv : min;
+    }, null);
+    return nextInvoice ? (nextInvoice.date || nextInvoice.createdAt) : null;
+  }
+
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Client: ${displayData?.name || ''}`}>
       {/* Tab Bar */}
@@ -263,14 +280,9 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                       <div className="text-sm text-secondary-500">Next Invoice</div>
                       <div className="text-secondary-900">
                         {(() => {
-                          const recurringInvoice = getMostFrequentRecurringInvoice(displayData, invoices);
-                          if (recurringInvoice && recurringInvoice.billingFrequency && recurringInvoice.billingFrequency.toLowerCase() !== 'one-time') {
-                            if (recurringInvoice.nextInvoiceDate) {
-                              return formatDate(recurringInvoice.nextInvoiceDate);
-                            }
-                            return 'Recurring billing';
-                          }
-                          return 'No recurring billing';
+                          const nextDate = getNextUpcomingInvoiceDate(displayData, invoices);
+                          if (nextDate) return formatDate(nextDate);
+                          return 'No upcoming invoice';
                         })()}
                       </div>
                     </div>
@@ -338,51 +350,6 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                               </td>
                               <td className="py-2 px-3 text-secondary-600">
                                 {formatDate(inv.dueDate)}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Payments Table */}
-                <div className="bg-white rounded-lg border border-secondary-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-secondary-200">
-                    <h3 className="text-sm font-semibold text-secondary-800">Payment History</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-secondary-200 bg-gray-50">
-                          <th className="py-2 px-3 text-left font-medium text-secondary-600">Date</th>
-                          <th className="py-2 px-3 text-left font-medium text-secondary-600">Amount</th>
-                          <th className="py-2 px-3 text-left font-medium text-secondary-600">Method</th>
-                          <th className="py-2 px-3 text-left font-medium text-secondary-600">Invoice #</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {clientPayments.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="py-4 text-center text-secondary-400">
-                              No payments found
-                            </td>
-                          </tr>
-                        ) : (
-                          clientPayments.map(pay => (
-                            <tr key={pay.id} className="border-b border-secondary-100">
-                              <td className="py-2 px-3 text-secondary-600">
-                                {formatDate(pay.date)}
-                              </td>
-                              <td className="py-2 px-3 font-medium text-secondary-900">
-                                ${pay.amount || '-'}
-                              </td>
-                              <td className="py-2 px-3 text-secondary-600">
-                                {pay.method || '-'}
-                              </td>
-                              <td className="py-2 px-3 text-secondary-600">
-                                {pay.invoiceId || '-'}
                               </td>
                             </tr>
                           ))
