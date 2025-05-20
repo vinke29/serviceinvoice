@@ -5,6 +5,18 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 // Initialize pdfMake with fonts properly
 pdfMake.vfs = pdfFonts.pdfMake ? pdfFonts.pdfMake.vfs : pdfFonts;
 
+// Helper to convert image URL to data URL
+async function toDataURL(url) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 class PdfService {
   /**
    * Generates a PDF invoice that can be downloaded
@@ -13,8 +25,8 @@ class PdfService {
    * @param {Object} agentConfig - Agent configuration (optional)
    * @returns {Promise<Blob>} PDF file as a Blob
    */
-  generateInvoicePdf(invoice, client = {}, agentConfig = {}) {
-    return new Promise((resolve) => {
+  async generateInvoicePdf(invoice, client = {}, agentConfig = {}) {
+    return new Promise(async (resolve) => {
       try {
         console.log('Generating PDF with agent config:', JSON.stringify({
           ...agentConfig,
@@ -49,10 +61,18 @@ class PdfService {
 
         // Process logo if available
         let logoDefinition = null;
-        if (agentConfig.logo) {
-          // Always treat logo as an image URL
+        let logoData = agentConfig.logo;
+        if (logoData && typeof logoData === 'string' && logoData.startsWith('http')) {
+          try {
+            logoData = await toDataURL(logoData);
+          } catch (e) {
+            console.warn('Failed to convert logo URL to data URL:', e);
+            logoData = null;
+          }
+        }
+        if (logoData) {
           logoDefinition = {
-            image: agentConfig.logo,
+            image: logoData,
             width: 150,
             margin: [0, 0, 0, 10]
           };
