@@ -480,31 +480,89 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     console.log('Data loaded successfully for reminder');
 
     // Construct the email
+    const formatCurrency = (amount) => {
+      if (!amount || isNaN(amount)) return '0.00';
+      return parseFloat(amount).toFixed(2);
+    };
+    const logoHtml = user.logo
+      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+      : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
+          ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
+        </div>`;
+    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
+    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
+    const currency = invoice.currency || '$';
+    const reminderHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Reminder for Invoice #${invoice.invoiceNumber}</title>
+      </head>
+      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+                <tr>
+                  <td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                    <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">PAYMENT REMINDER</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:32px 40px 0 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="top" width="60" style="padding-right:20px;">
+                          ${logoHtml}
+                        </td>
+                        <td valign="top">
+                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
+                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:24px 40px 0 40px;">
+                    <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
+                    <p style="font-size:15px;color:#333;">This is a friendly reminder that the following invoice is due:</p>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+                      <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
+                      </tr>
+                    </table>
+                    <p style="font-size:15px;color:#333;">Please make payment at your earliest convenience.</p>
+                    <p style="font-size:15px;color:#333;">Thank you for your business!</p>
+                    <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
     const msg = {
       to: client.email,
       from: 'billienowcontact@gmail.com',
       subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
-      text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${invoice.totalAmount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${user.businessName || user.displayName}`,
-      html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Payment Reminder</h2>
-        <p>Dear ${client.name},</p>
-        <p>This is a friendly reminder that the following invoice is due:</p>
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <tr style="background-color: #f2f2f2;">
-            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
-            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th>
-            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th>
-          </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td>
-            <td style="padding: 10px; border: 1px solid #ddd;">${invoice.currency || '$'}${invoice.totalAmount}</td>
-            <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
-          </tr>
-        </table>
-        <p>Please make payment at your earliest convenience.</p>
-        <p>Thank you for your business!</p>
-        <p>Regards,<br>${user.businessName || user.displayName}</p>
-      </div>`
+      text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${currency}${amount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${senderName}`,
+      html: reminderHtml
     };
 
     try {
