@@ -600,16 +600,14 @@ function Invoices() {
   // Calculate scheduled invoices for the next 12 months
   useEffect(() => {
     if (clients.length > 0) {
-      // Calculate the full list of scheduled invoices for the next 12 months
       const nextYearInvoices = [];
       const today = new Date();
-      today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
-      
-      // First process all scheduled invoices (both manual and recurring)
+      today.setHours(0, 0, 0, 0);
       invoices.forEach(invoice => {
         if (invoice.deleted) return;
+        const client = clients.find(c => c.id === invoice.clientId);
+        if (!client || client.onHold) return; // <-- Enforce this filter
         try {
-          // Parse invoice.date as a local date to avoid timezone issues
           const [year, month, day] = invoice.date.split('-').map(Number);
           const invoiceDate = new Date(year, month - 1, day);
           if (invoice.status === 'scheduled' || (invoice.isRecurring && isFuture(invoiceDate))) {
@@ -631,14 +629,8 @@ function Invoices() {
           console.error(`Error processing scheduled invoice:`, e);
         }
       });
-      
-      // Sort by date
       nextYearInvoices.sort((a, b) => a.date - b.date);
-      
-      // Update state with all scheduled invoices
       setScheduledInvoices(nextYearInvoices);
-      
-      // If we have invoices, show the scheduled view and set to first month
       if (nextYearInvoices.length > 0) {
         setShowScheduled(true);
         const firstDate = nextYearInvoices[0].date;

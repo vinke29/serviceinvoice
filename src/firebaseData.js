@@ -269,7 +269,8 @@ export async function updateClientStatus(userId, clientId, newStatus) {
     const client = clientSnap.data();
     const updates = {
       status: newStatus,
-      lastStatusChange: new Date().toISOString()
+      lastStatusChange: new Date().toISOString(),
+      onHold: (newStatus === 'on_hold') // Set onHold true if status is on_hold
     };
 
     // If client is being cancelled or put on hold, delete scheduled invoices
