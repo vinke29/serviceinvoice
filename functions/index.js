@@ -285,7 +285,7 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
         to: client.email,
         from: {
           email: VERIFIED_SENDER,
-          name: `${user.name || 'Your Service Provider'} via BillieNow`
+          name: `${user.name || user.companyName || 'Your Service Provider'} via BillieNow`
         },
         replyTo: user.email,
         bcc: user.bccEmail || user.email, // BCC the user's specified BCC email or their own email
@@ -557,9 +557,15 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       </body>
       </html>
     `;
+    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const fromName = `${user.name || senderName} via BillieNow`;
     const msg = {
       to: client.email,
-      from: 'billienowcontact@gmail.com',
+      from: {
+        email: VERIFIED_SENDER,
+        name: fromName
+      },
+      replyTo: user.email,
       subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
       text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${currency}${amount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${senderName}`,
       html: reminderHtml
