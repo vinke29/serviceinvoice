@@ -537,6 +537,8 @@ function Invoices() {
   const [agentConfig, setAgentConfig] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1059,16 +1061,20 @@ function Invoices() {
 
   // Delete invoice
   const handleDeleteInvoice = async (invoice) => {
+    setInvoiceToDelete(invoice);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete handler
+  const confirmDeleteInvoice = async () => {
     const user = auth.currentUser;
-    if (window.confirm('Are you sure you want to delete this scheduled invoice?')) {
-      // Delete from Firestore
-      await deleteInvoice(user.uid, invoice.id);
-      // Optionally, you can set userDeleted: true instead of deleting
-      // await updateInvoice(invoice.id, { userDeleted: true });
-      // Refresh invoices
-      fetchInvoices();
+    if (invoiceToDelete && user) {
+      await deleteInvoice(user.uid, invoiceToDelete.id);
+      setInvoices(prev => prev.filter(inv => inv.id !== invoiceToDelete.id));
+      setShowDeleteModal(false);
+      setInvoiceToDelete(null);
     }
-  }
+  };
 
   // Send a scheduled invoice now
   const handleSendNow = async (scheduledInvoice) => {
@@ -1284,6 +1290,44 @@ function Invoices() {
     }
   }
 
+  // Add handler to mark invoice as unpaid
+  async function handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice) {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      // Restore original invoice date and due date
+      const updatedInvoice = {
+        ...invoice,
+        status: 'pending',
+        // Optionally, you can store original dates in custom fields if needed
+        // For now, just keep the current dates
+      };
+      await updateInvoice(user.uid, updatedInvoice);
+      setInvoices(prev => prev.map(inv => inv.id === invoice.id ? updatedInvoice : inv));
+      setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? updatedInvoice : prev);
+      showToast('success', 'Invoice marked as unpaid!');
+    } catch (error) {
+      showToast('error', 'Failed to mark as unpaid.');
+      console.error('Mark unpaid error:', error);
+    }
+  }
+
+  // Add this function in the Invoices component:
+  const handleUpdateInvoice = async (updatedInvoice) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await updateInvoice(user.uid, updatedInvoice);
+      setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
+      setShowForm(false);
+      setEditingInvoice(null);
+      setSuccessMessage(`Invoice #${updatedInvoice.invoiceNumber} updated successfully.`);
+    } catch (error) {
+      showToast('error', 'Failed to update invoice.');
+      console.error('Update invoice error:', error);
+    }
+  };
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1382,15 +1426,15 @@ function Invoices() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-secondary-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Invoice #</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Client</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Amount</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Description</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Invoice Date</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Due Date</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Status</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-secondary-600">Actions</th>
+              <tr className="border-b border-secondary-200 bg-secondary-50">
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Invoice #</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Client</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Amount</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Description</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Invoice Date</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Due Date</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Status</th>
+                <th className="text-right py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1422,57 +1466,90 @@ function Invoices() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span>
                   </td>
                   <td className="py-4 px-4 text-right">
-                    <DropdownMenu.Root>
-                      <DropdownMenu.Trigger asChild>
-                        <button className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200" title="More Actions">
+                    <div className="flex justify-end space-x-2">
+                      {/* Mark Paid/Unpaid */}
+                      {invoice.status === 'paid' ? (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice); }}
+                          className="p-2 text-secondary-600 hover:text-yellow-600 transition-colors duration-200"
+                          title="Mark Unpaid"
+                          aria-label="Mark Unpaid"
+                        >
+                          {/* Unpaid icon (circle with line) */}
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="2" />
-                            <circle cx="19" cy="12" r="2" />
-                            <circle cx="5" cy="12" r="2" />
+                            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                            <line x1="8" y1="8" x2="16" y2="16" strokeWidth="2" />
                           </svg>
                         </button>
-                      </DropdownMenu.Trigger>
-                      <DropdownMenu.Content className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
-                        <DropdownMenu.Item asChild>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
-                            onClick={() => handleEditInvoice(invoice)}
-                          >
-                            Edit
-                          </button>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item asChild>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
-                            onClick={() => handleDeleteInvoice(invoice)}
-                          >
-                            Delete
-                          </button>
-                        </DropdownMenu.Item>
-                        {(invoice.status === 'pending' || invoice.status === 'overdue') && (
-                          <>
-                            <DropdownMenu.Separator className="my-1 border-t border-secondary-100" />
-                            <DropdownMenu.Item
-                              onClick={e => handleSendReminder(invoice, setInvoices, setSelectedInvoice, e)}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleMarkPaid(invoice, setInvoices, setSelectedInvoice); }}
+                          className="p-2 text-secondary-600 hover:text-green-600 transition-colors duration-200"
+                          title="Mark Paid"
+                          aria-label="Mark Paid"
+                        >
+                          {/* Paid icon (check circle) */}
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                            <path d="M9 12l2 2l4-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      )}
+                      {/* Edit */}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleEditInvoice(invoice); }}
+                        className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
+                        title="Edit"
+                        aria-label="Edit"
+                      >
+                        {/* Edit icon */}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      {/* Delete */}
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
+                        className="p-2 text-secondary-600 hover:text-red-600 transition-colors duration-200"
+                        title="Delete"
+                        aria-label="Delete"
+                      >
+                        {/* Delete icon */}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      {/* Overflow menu for less common actions */}
+                      {(invoice.status === 'pending' || invoice.status === 'overdue') && (
+                        <DropdownMenu.Root>
+                          <DropdownMenu.Trigger asChild>
+                            <button
+                              className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
+                              title="More Actions"
+                              aria-label="More Actions"
+                              onClick={e => e.stopPropagation()}
                             >
-                              Send Reminder
-                            </DropdownMenu.Item>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="2" />
+                                <circle cx="19" cy="12" r="2" />
+                                <circle cx="5" cy="12" r="2" />
+                              </svg>
+                            </button>
+                          </DropdownMenu.Trigger>
+                          <DropdownMenu.Content className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
                             <DropdownMenu.Item asChild>
                               <button
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded"
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleMarkPaid(invoice, setInvoices, setSelectedInvoice);
-                                }}
+                                onClick={e => { e.stopPropagation(); handleSendReminder(invoice, setInvoices, setSelectedInvoice, e); }}
                               >
-                                Mark Paid
+                                Send Reminder
                               </button>
                             </DropdownMenu.Item>
-                          </>
-                        )}
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Root>
+                            {/* Optionally add Send Escalation here if available */}
+                          </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1659,8 +1736,8 @@ function Invoices() {
       >
         <InvoiceForm
           invoice={editingInvoice}
-          clients={clients} 
-          onSubmit={editingInvoice ? handleEditInvoice : handleAddInvoice}
+          clients={clients}
+          onSubmit={editingInvoice ? handleUpdateInvoice : handleAddInvoice}
           onCancel={() => {
             setShowForm(false)
             setEditingInvoice(null)
@@ -1679,6 +1756,29 @@ function Invoices() {
           message={successMessage} 
           onClose={() => setSuccessMessage(null)} 
         />
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Delete Invoice</h3>
+            <p className="text-secondary-700 mb-4">Are you sure you want to delete this invoice? This action cannot be undone.</p>
+            <div className="flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 rounded-lg bg-secondary-100 text-secondary-700 hover:bg-secondary-200"
+                onClick={() => { setShowDeleteModal(false); setInvoiceToDelete(null); }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                onClick={confirmDeleteInvoice}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
