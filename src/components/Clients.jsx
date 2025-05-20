@@ -12,6 +12,7 @@ import 'react-day-picker/dist/style.css';
 import clsx from 'clsx';
 import { getClients, addClient, updateClient, deleteClient, getInvoices, updateClientStatus } from '../firebaseData';
 import { auth } from '../firebase';
+import { useInvoices } from './InvoicesContext';
 
 const STATUS_OPTIONS = ['Active', 'Delinquent', 'Inactive']
 const ON_HOLD_OPTIONS = ['All', 'On Hold', 'Not On Hold']
@@ -230,6 +231,7 @@ function Clients() {
   const [showFilters, setShowFilters] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+  const { refreshInvoices } = useInvoices();
 
   // Load clients and invoices from Firestore on mount
   useEffect(() => {
@@ -284,16 +286,22 @@ function Clients() {
       // Find the original client
       const original = clients.find(c => c.id === client.id)
       const normalizedStatus = client.status ? client.status.toLowerCase() : 'active';
+      let clientUpdate = { ...client, status: normalizedStatus };
+      if (normalizedStatus === 'active') {
+        clientUpdate.onHold = false;
+      }
       if (original && original.status !== normalizedStatus && (normalizedStatus === 'cancelled' || normalizedStatus === 'on_hold')) {
         // Status changed to cancelled or on_hold, use updateClientStatus
         await updateClientStatus(user.uid, client.id, normalizedStatus)
       } else {
         // No status change, or not a special status, just update
-        await updateClient(user.uid, { ...client, status: normalizedStatus })
+        await updateClient(user.uid, clientUpdate)
       }
-      await refreshData() // Refresh data after editing client
+      await refreshData() // Refresh both clients and invoices after editing client
+      await refreshInvoices() // Ensure all invoice consumers are up to date
     }
     setEditingClient(null)
+    setShowForm(false)
   }
 
   // Delete client
@@ -364,17 +372,17 @@ function Clients() {
   // Format the invoice date for display
   const formatInvoiceDate = (client) => {
     const dateInfo = getRelevantInvoiceDate(client);
-    
     if (dateInfo.isPaused) {
       return <span className="text-orange-600 font-medium">Paused</span>;
     }
-    
     if (!dateInfo.value) {
+      // Show 'Not Scheduled' for active clients with no next invoice
+      if (!client.onHold) {
+        return <span className="text-secondary-500">Not Scheduled</span>;
+      }
       return '-';
     }
-    
     try {
-      // Use date-fns format to ensure consistent date display
       const formattedDate = format(new Date(dateInfo.value), 'MM/dd/yyyy');
       return (
         <div>

@@ -270,12 +270,11 @@ export async function updateClientStatus(userId, clientId, newStatus) {
     const updates = {
       status: newStatus,
       lastStatusChange: new Date().toISOString(),
-      onHold: (newStatus === 'on_hold') // Set onHold true if status is on_hold
+      onHold: (newStatus === 'on_hold')
     };
 
-    // If client is being cancelled or put on hold, delete scheduled invoices
+    // If client is being cancelled or put on hold, delete scheduled invoices and clear nextInvoiceDate
     if (newStatus === 'cancelled' || newStatus === 'on_hold') {
-      // Get all scheduled invoices for this client
       const invoicesRef = collection(db, 'users', userId, 'invoices');
       const scheduledQuery = query(
         invoicesRef,
@@ -283,18 +282,25 @@ export async function updateClientStatus(userId, clientId, newStatus) {
         where('status', '==', 'scheduled')
       );
       const scheduledInvoices = await getDocs(scheduledQuery);
-
-      console.log(`[updateClientStatus] newStatus: ${newStatus}, scheduledInvoices found: ${scheduledInvoices.size}`);
-      if (scheduledInvoices.size > 0) {
-        console.log('Scheduled invoice IDs:', scheduledInvoices.docs.map(doc => doc.id));
-      }
-
-      // Delete each scheduled invoice
       const deletePromises = scheduledInvoices.docs.map(docSnap => deleteDoc(docSnap.ref));
       await Promise.all(deletePromises);
+      updates.nextInvoiceDate = null; // Clear nextInvoiceDate
     }
 
-    // Update client status
+    // If client is being reactivated, check for scheduled invoices
+    if (newStatus === 'active') {
+      const invoicesRef = collection(db, 'users', userId, 'invoices');
+      const scheduledQuery = query(
+        invoicesRef,
+        where('clientId', '==', clientId),
+        where('status', '==', 'scheduled')
+      );
+      const scheduledInvoices = await getDocs(scheduledQuery);
+      if (scheduledInvoices.empty) {
+        updates.nextInvoiceDate = null; // No scheduled invoices, clear nextInvoiceDate
+      }
+    }
+
     await updateDoc(clientRef, updates);
     return { ...client, ...updates };
   } catch (error) {
