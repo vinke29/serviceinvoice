@@ -9,6 +9,7 @@ import clsx from 'clsx';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { useInvoices } from './InvoicesContext';
 import { auth } from '../firebase';
+import { exportToCSV } from '../utils/csvExport';
 
 const ReminderOpsDashboard = () => {
   const [filters, setFilters] = useState({
@@ -60,14 +61,18 @@ const ReminderOpsDashboard = () => {
           const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
           let stage = '';
           let type = '';
-          // Use activity log to determine stage
           let reminderCount = 0;
           let invoiceSentDate = null;
+          let escalationSent = false;
           if (Array.isArray(inv.activity)) {
             reminderCount = inv.activity.filter(a => a.type === 'reminder_sent').length;
             invoiceSentDate = inv.activity.find(a => a.type === 'invoice_sent')?.date;
+            escalationSent = inv.activity.some(a => a.type === 'escalation_sent');
           }
-          if (reminderCount === 0) {
+          if (escalationSent) {
+            stage = 'Escalation Sent';
+            type = 'escalation';
+          } else if (reminderCount === 0) {
             stage = 'Invoice Sent';
             type = 'invoice';
           } else {
@@ -156,22 +161,101 @@ const ReminderOpsDashboard = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
+      <div className="mb-6 flex flex-col md:flex-row md:space-x-2 space-y-2 md:space-y-0 items-start md:items-center justify-between">
+        <div className="flex flex-row items-center justify-between w-full md:w-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Reminders & Escalations</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Track and manage all active invoices, reminders and escalations
-          </p>
+          <div className="flex flex-row items-center justify-end w-full md:hidden space-x-2 ml-auto">
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="p-2 rounded-full bg-secondary-100 text-secondary-700 hover:bg-secondary-200 focus:outline-none ml-1">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content align="end" sideOffset={4} className="z-50 min-w-[160px] bg-white border border-secondary-200 rounded-lg shadow-lg p-2 mt-2">
+                <DropdownMenu.Item asChild>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
+                    onClick={() => setShowFilters(!showFilters)}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+                    </svg>
+                    <span>Show Filters</span>
+                  </button>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild>
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-secondary-50 rounded flex items-center space-x-2"
+                    onClick={() => {
+                      const columns = [
+                        'clientName', 'invoiceNumber', 'amount', 'daysOverdue', 'stage', 'nextAction', 'type', 'status'
+                      ];
+                      const data = filteredReminders.map(reminder => ({
+                        clientName: reminder.clientName,
+                        invoiceNumber: reminder.invoiceNumber,
+                        amount: reminder.amount,
+                        daysOverdue: reminder.daysOverdue,
+                        stage: reminder.stage,
+                        nextAction: reminder.nextAction ? (typeof reminder.nextAction === 'string' ? reminder.nextAction : (reminder.nextAction instanceof Date ? reminder.nextAction.toISOString().slice(0,10) : '')) : '',
+                        type: reminder.type,
+                        status: reminder.status
+                      }));
+                      exportToCSV({ data, filename: `reminders-${new Date().toISOString().slice(0,10)}.csv`, columns });
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <path d="M8 16h8M8 12h8M8 8h8" />
+                    </svg>
+                    <span>Export to CSV</span>
+                  </button>
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>
+          </div>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors duration-200 flex items-center space-x-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-          </svg>
-          <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
-        </button>
+        {/* Desktop: All buttons visible */}
+        <div className="hidden md:flex flex-row space-x-2 items-center">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 transition-colors duration-200 flex items-center space-x-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+            </svg>
+            <span>{showFilters ? 'Hide Filters' : 'Show Filters'}</span>
+          </button>
+          <button
+            onClick={() => {
+              const columns = [
+                'clientName', 'invoiceNumber', 'amount', 'daysOverdue', 'stage', 'nextAction', 'type', 'status'
+              ];
+              const data = filteredReminders.map(reminder => ({
+                clientName: reminder.clientName,
+                invoiceNumber: reminder.invoiceNumber,
+                amount: reminder.amount,
+                daysOverdue: reminder.daysOverdue,
+                stage: reminder.stage,
+                nextAction: reminder.nextAction ? (typeof reminder.nextAction === 'string' ? reminder.nextAction : (reminder.nextAction instanceof Date ? reminder.nextAction.toISOString().slice(0,10) : '')) : '',
+                type: reminder.type,
+                status: reminder.status
+              }));
+              exportToCSV({ data, filename: `reminders-${new Date().toISOString().slice(0,10)}.csv`, columns });
+            }}
+            className="px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200 flex items-center space-x-2"
+            aria-label="Export to CSV"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path d="M8 16h8M8 12h8M8 8h8" />
+            </svg>
+            <span className="hidden sm:inline">Export to CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
