@@ -18,6 +18,7 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import './App.css'
 import { VERSION } from './version.js'
+import { InvoicesProvider } from './components/InvoicesContext'
 
 // Custom toast styles - will override default react-toastify styling
 import './toast.css'
@@ -288,25 +289,27 @@ function App() {
       {showOnboarding ? (
         <OnboardingFlow onComplete={handleOnboardingComplete} />
       ) : (
-        <div className="app-container min-h-screen bg-gray-50 overflow-x-hidden">
-          <Navigation user={user} />
-          <main className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 overflow-y-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/reminders" element={<ReminderOpsDashboard />} />
-              <Route path="/ai-agent" element={<AIAgent />} />
-              <Route path="/profile" element={<UserProfile key={user.uid} />} />
-              <Route path="/modal-demo" element={<StatusChangeModalDemo />} />
-              <Route path="/auth-test" element={<AuthTest />} />
-            </Routes>
-          </main>
-          <InvoiceGeneratedNotification />
-          <footer className="w-full text-center text-xs text-secondary-400 py-2 bg-transparent fixed bottom-0 left-0 z-40 pointer-events-none select-none">
-            Version {VERSION}
-          </footer>
-        </div>
+        <InvoicesProvider>
+          <div className="app-container min-h-screen bg-gray-50 overflow-x-hidden">
+            <Navigation user={user} />
+            <main className="pt-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 overflow-y-auto">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/reminders" element={<ReminderOpsDashboard />} />
+                <Route path="/ai-agent" element={<AIAgent />} />
+                <Route path="/profile" element={<UserProfile key={user.uid} />} />
+                <Route path="/modal-demo" element={<StatusChangeModalDemo />} />
+                <Route path="/auth-test" element={<AuthTest />} />
+              </Routes>
+            </main>
+            <InvoiceGeneratedNotification />
+            <footer className="w-full text-center text-xs text-secondary-400 py-2 bg-transparent fixed bottom-0 left-0 z-40 pointer-events-none select-none">
+              Version {VERSION}
+            </footer>
+          </div>
+        </InvoicesProvider>
       )}
     </Router>
   )

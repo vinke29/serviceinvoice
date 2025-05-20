@@ -7,7 +7,7 @@ import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 import clsx from 'clsx';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { getInvoices } from '../firebaseData';
+import { useInvoices } from './InvoicesContext';
 import { auth } from '../firebase';
 
 const ReminderOpsDashboard = () => {
@@ -23,88 +23,87 @@ const ReminderOpsDashboard = () => {
 
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
   const [pendingRange, setPendingRange] = useState({ from: null, to: null });
-  const [reminders, setReminders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
 
+  const { invoices, refreshInvoices } = useInvoices();
+  const [reminders, setReminders] = useState([]);
+
   useEffect(() => {
-    const fetchReminders = async () => {
-      setLoading(true);
-      const user = auth.currentUser;
-      if (user) {
-        const invoices = await getInvoices(user.uid);
-        // Fetch agent config for reminder interval
-        let agentConfig = null;
-        if (typeof window !== 'undefined' && user.uid) {
-          try {
-            agentConfig = await import('../firebaseData').then(mod => mod.getAgentConfig(user.uid));
-            console.log('Loaded agentConfig:', agentConfig);
-          } catch (e) { agentConfig = null; }
-        }
-        const reminderInterval = agentConfig && agentConfig.reminderIntervalDays ? agentConfig.reminderIntervalDays : 3;
-        const now = new Date();
-        // Helper to compare only the date part (ignore time)
-        const isOverdue = (dueDate) => {
-          const todayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString().slice(0, 10);
-          const dueStr = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).toISOString().slice(0, 10);
-          return dueStr < todayStr;
-        };
-        const remindersList = invoices
-          .filter(inv => inv.status !== 'scheduled' && inv.status !== 'Scheduled')
-          .map(inv => {
-            const due = new Date(inv.dueDate);
-            const created = inv.createdAt ? new Date(inv.createdAt) : due;
-            const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
-            let stage = '';
-            let type = '';
-            // Use activity log to determine stage
-            let reminderCount = 0;
-            let invoiceSentDate = null;
-            if (Array.isArray(inv.activity)) {
-              reminderCount = inv.activity.filter(a => a.type === 'reminder_sent').length;
-              invoiceSentDate = inv.activity.find(a => a.type === 'invoice_sent')?.date;
-            }
-            if (reminderCount === 0) {
-              stage = 'Invoice Sent';
-              type = 'invoice';
-            } else {
-              stage = `${reminderCount === 1 ? '1st' : reminderCount === 2 ? '2nd' : reminderCount === 3 ? '3rd' : reminderCount + 'th'} Reminder Sent`;
-              type = 'reminder';
-            }
-            // Next action: only if reminder interval is defined and type is invoice or reminder
-            let nextAction = '';
-            if (type === 'invoice' && reminderInterval) {
-              const next = new Date(created);
-              next.setDate(next.getDate() + reminderInterval);
-              nextAction = next;
-            } else if (type === 'reminder' && reminderInterval) {
-              const next = new Date(due);
-              next.setDate(next.getDate() + reminderInterval);
-              nextAction = next;
-            } else {
-              nextAction = null;
-            }
-            return {
-              id: inv.id,
-              clientName: inv.clientName || 'Unknown',
-              invoiceNumber: inv.invoiceNumber || inv.id,
-              amount: inv.amount,
-              dueDate: due,
-              daysOverdue,
-              type,
-              stage,
-              nextAction,
-              status: 'active'
-            };
-          });
-        setReminders(remindersList);
-      } else {
-        setReminders([]);
-      }
-      setLoading(false);
-    };
-    fetchReminders();
+    refreshInvoices && refreshInvoices();
   }, []);
+
+  useEffect(() => {
+    // Debug: log invoices context
+    console.log('Invoices in reminders context:', invoices);
+    // Use invoices from context to build reminders
+    const buildReminders = async () => {
+      // Fetch agent config for reminder interval
+      let agentConfig = null;
+      const user = auth.currentUser;
+      if (typeof window !== 'undefined' && user?.uid) {
+        try {
+          agentConfig = await import('../firebaseData').then(mod => mod.getAgentConfig(user.uid));
+        } catch (e) { agentConfig = null; }
+      }
+      const reminderInterval = agentConfig && agentConfig.reminderIntervalDays ? agentConfig.reminderIntervalDays : 3;
+      const now = new Date();
+      const remindersList = invoices
+        .filter(inv =>
+          inv.status !== 'scheduled' &&
+          inv.status !== 'Scheduled' &&
+          inv.status !== 'paid' &&
+          inv.status !== 'Paid'
+        )
+        .map(inv => {
+          const due = new Date(inv.dueDate);
+          const created = inv.createdAt ? new Date(inv.createdAt) : due;
+          const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+          let stage = '';
+          let type = '';
+          // Use activity log to determine stage
+          let reminderCount = 0;
+          let invoiceSentDate = null;
+          if (Array.isArray(inv.activity)) {
+            reminderCount = inv.activity.filter(a => a.type === 'reminder_sent').length;
+            invoiceSentDate = inv.activity.find(a => a.type === 'invoice_sent')?.date;
+          }
+          if (reminderCount === 0) {
+            stage = 'Invoice Sent';
+            type = 'invoice';
+          } else {
+            stage = `${reminderCount === 1 ? '1st' : reminderCount === 2 ? '2nd' : reminderCount === 3 ? '3rd' : reminderCount + 'th'} Reminder Sent`;
+            type = 'reminder';
+          }
+          // Next action: only if reminder interval is defined and type is invoice or reminder
+          let nextAction = '';
+          if (type === 'invoice' && reminderInterval) {
+            const next = new Date(created);
+            next.setDate(next.getDate() + reminderInterval);
+            nextAction = next;
+          } else if (type === 'reminder' && reminderInterval) {
+            const next = new Date(due);
+            next.setDate(next.getDate() + reminderInterval);
+            nextAction = next;
+          } else {
+            nextAction = null;
+          }
+          return {
+            id: inv.id,
+            clientName: inv.clientName || 'Unknown',
+            invoiceNumber: inv.invoiceNumber || inv.id,
+            amount: inv.amount,
+            dueDate: due,
+            daysOverdue,
+            type,
+            stage,
+            nextAction,
+            status: 'active'
+          };
+        });
+      setReminders(remindersList);
+    };
+    buildReminders();
+  }, [invoices]);
 
   const getStatusBadgeClass = (type, stage) => {
     if (type === 'escalation') {
@@ -151,8 +150,8 @@ const ReminderOpsDashboard = () => {
     return true;
   });
 
-  if (loading) {
-    return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading reminders...</div>;
+  if (invoices.length === 0) {
+    return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">No invoices to show.</div>;
   }
 
   return (

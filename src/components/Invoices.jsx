@@ -18,6 +18,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
+import { useInvoices } from './InvoicesContext';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
@@ -515,7 +516,7 @@ function SuccessNotification({ message, onClose }) {
 }
 
 function Invoices() {
-  const [invoices, setInvoices] = useState([])
+  const { invoices, setInvoices, refreshInvoices, loading } = useInvoices();
   const [clients, setClients] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState(null)
@@ -527,7 +528,6 @@ function Invoices() {
   const [statusFilter, setStatusFilter] = useState([])
   const [dateRange, setDateRange] = useState([undefined, undefined])
   const [invoiceDateRange, setInvoiceDateRange] = useState([undefined, undefined])
-  const [loading, setLoading] = useState(true)
   const [initialLoad, setInitialLoad] = useState(true)
   const [scheduledInvoices, setScheduledInvoices] = useState([]);
   const [showScheduled, setShowScheduled] = useState(false);
@@ -585,86 +585,17 @@ function Invoices() {
 
   // Load invoices and clients from Firestore on mount
   useEffect(() => {
-    const fetchData = async () => {
-      if (initialLoad) setLoading(true)
-      const user = auth.currentUser
+    const fetchClients = async () => {
+      const user = auth.currentUser;
       if (user) {
-        const [invoiceData, clientData, configData] = await Promise.all([
-          getInvoices(user.uid),
-          getClients(user.uid),
-          getAgentConfig(user.uid)
-        ])
-        setInvoices(invoiceData)
-        setClients(clientData)
-        setAgentConfig(configData || { netDays: 0 })
+        const clientsData = await getClients(user.uid);
+        setClients(clientsData);
       } else {
-        setInvoices([])
-        setClients([])
-        setAgentConfig(null)
+        setClients([]);
       }
-      if (initialLoad) {
-        setLoading(false)
-        setInitialLoad(false)
-      }
-    }
-    fetchData()
-    
-    // Set up a focus event listener to refresh data when navigating back to the page
-    // Use a lastRefresh timestamp to prevent multiple refreshes in a short period
-    let lastRefresh = Date.now()
-    
-    const handleFocus = () => {
-      const now = Date.now()
-      // Only refresh if it's been at least 5 seconds since the last refresh
-      if (now - lastRefresh > 5000) {
-        console.log("Window focused, refreshing invoice data")
-        lastRefresh = now
-        
-        // Don't reload the whole page state, just update the invoice data
-        const refreshData = async () => {
-          const user = auth.currentUser
-          if (user) {
-            try {
-              const invoiceData = await getInvoices(user.uid)
-              
-              // Carefully merge the new invoice data with existing state
-              setInvoices(prev => {
-                // Start with the new data
-                const newData = [...invoiceData]
-                
-                // For any existing invoices that are being edited or viewed, 
-                // use the local state version instead of the server version
-                if (editingInvoice) {
-                  const idx = newData.findIndex(inv => inv.id === editingInvoice.id)
-                  if (idx >= 0) {
-                    newData[idx] = editingInvoice
-                  }
-                }
-                
-                if (selectedInvoice) {
-                  const idx = newData.findIndex(inv => inv.id === selectedInvoice.id)
-                  if (idx >= 0) {
-                    newData[idx] = selectedInvoice
-                  }
-                }
-                
-                return newData
-              })
-            } catch (error) {
-              console.error("Error refreshing invoice data:", error)
-            }
-          }
-        }
-        
-        refreshData()
-      }
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    return () => {
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [editingInvoice, selectedInvoice]) // Add dependencies here
+    };
+    fetchClients();
+  }, []);
 
   // Calculate scheduled invoices for the next 12 months
   useEffect(() => {
