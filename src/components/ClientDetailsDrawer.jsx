@@ -118,6 +118,20 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
       .replace(/\b\w/g, c => c.toUpperCase());
   };
 
+  // Helper: Recurring frequency order (most frequent first)
+  const RECURRING_ORDER = ['weekly', 'monthly', 'quarterly', 'biannually', 'annually'];
+
+  // Helper: Get the most frequent recurring billing type for a client
+  function getClientBillingInfo(client, invoices) {
+    const clientInvoices = invoices.filter(inv => inv.clientId === client.id);
+    for (const freq of RECURRING_ORDER) {
+      if (clientInvoices.some(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === freq)) {
+        return formatBillingFrequency(freq);
+      }
+    }
+    return 'One-time';
+  }
+
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Client: ${displayData?.name || ''}`}>
       {/* Tab Bar */}
@@ -224,7 +238,7 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                     <div>
                       <div className="text-sm text-secondary-500">Billing Frequency</div>
                       <div className="text-secondary-900 font-medium">
-                        {formatBillingFrequency(displayData.billingFrequency)}
+                        {getClientBillingInfo(displayData, invoices)}
                       </div>
                     </div>
                     <div>
