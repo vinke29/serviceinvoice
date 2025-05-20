@@ -239,7 +239,7 @@ function Clients() {
   const handleAddClient = async (clientData) => {
     const user = auth.currentUser
     if (user) {
-      let clientToAdd = { ...clientData }
+      let clientToAdd = { ...clientData, status: clientData.status ? clientData.status.toLowerCase() : 'active' }
       const newClient = await addClient(user.uid, clientToAdd)
       await refreshData() // Refresh data after adding client
     }
@@ -252,12 +252,13 @@ function Clients() {
     if (user) {
       // Find the original client
       const original = clients.find(c => c.id === client.id)
-      if (original && original.status !== client.status && (client.status === 'cancelled' || client.status === 'on_hold')) {
+      const normalizedStatus = client.status ? client.status.toLowerCase() : 'active';
+      if (original && original.status !== normalizedStatus && (normalizedStatus === 'cancelled' || normalizedStatus === 'on_hold')) {
         // Status changed to cancelled or on_hold, use updateClientStatus
-        await updateClientStatus(user.uid, client.id, client.status)
+        await updateClientStatus(user.uid, client.id, normalizedStatus)
       } else {
         // No status change, or not a special status, just update
-        await updateClient(user.uid, client)
+        await updateClient(user.uid, { ...client, status: normalizedStatus })
       }
       await refreshData() // Refresh data after editing client
     }
@@ -284,7 +285,7 @@ function Clients() {
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.email.toLowerCase().includes(searchTerm.toLowerCase())
     // Status
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(client.status)
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes((client.status || '').toLowerCase())
     // Customer Since
     const sinceDate = new Date(client.customerSince)
     const matchesCustomerSince = (!customerSinceFrom || sinceDate >= new Date(customerSinceFrom)) && (!customerSinceTo || sinceDate <= new Date(customerSinceTo))
@@ -538,17 +539,17 @@ function Clients() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-secondary-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Billing Info</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Next Invoice Date</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Customer Since</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Last Invoiced</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Last Paid</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Payment Score</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-secondary-600">On Hold</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-secondary-600">Actions</th>
+              <tr className="border-b border-secondary-200 bg-secondary-50">
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Name</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Billing Info</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Next Invoice Date</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Customer Since</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Last Invoiced</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Last Paid</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Payment Score</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Status</th>
+                <th className="text-left py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">On Hold</th>
+                <th className="text-right py-4 px-4 text-xs font-semibold text-secondary-700 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -586,7 +587,7 @@ function Clients() {
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${client.paymentScore >= 8 ? 'bg-green-100 text-green-800' : client.paymentScore >= 5 ? 'bg-yellow-100 text-yellow-800' : client.paymentScore ? 'bg-red-100 text-red-800' : ''}`}>{client.paymentScore !== undefined && client.paymentScore !== '' ? client.paymentScore : '-'}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${client.status === 'active' ? 'bg-green-100 text-green-800' : client.status === 'delinquent' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>{formatStatus(client.status)}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${((client.status || '').toLowerCase() === 'active') ? 'bg-green-100 text-green-800' : ((client.status || '').toLowerCase() === 'delinquent') ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>{formatStatus(client.status)}</span>
                   </td>
                   <td className="py-4 px-4">
                     {client.onHold ? (

@@ -63,8 +63,9 @@ export async function getClients(uid) {
 export async function addClient(uid, client) {
   try {
     const ref = collection(db, 'users', uid, 'clients');
-    const docRef = await withTimeout(addDoc(ref, client));
-    return { id: docRef.id, ...client };
+    const clientWithNormalizedStatus = { ...client, status: client.status ? client.status.toLowerCase() : 'active' };
+    const docRef = await withTimeout(addDoc(ref, clientWithNormalizedStatus));
+    return { id: docRef.id, ...clientWithNormalizedStatus };
   } catch (error) {
     console.error('Error adding client:', error);
     throw error;
@@ -74,7 +75,8 @@ export async function addClient(uid, client) {
 export async function updateClient(uid, client) {
   try {
     const ref = doc(db, 'users', uid, 'clients', client.id);
-    await withTimeout(updateDoc(ref, client));
+    const clientWithNormalizedStatus = { ...client, status: client.status ? client.status.toLowerCase() : 'active' };
+    await withTimeout(updateDoc(ref, clientWithNormalizedStatus));
     return true;
   } catch (error) {
     console.error('Error updating client:', error);
