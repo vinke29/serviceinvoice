@@ -184,6 +184,17 @@ const formatStatus = (status) => {
     .replace(/\b\w/g, c => c.toUpperCase());
 };
 
+// Helper: Get the most frequent recurring invoice for a client
+function getMostFrequentRecurringInvoice(client, invoices) {
+  const clientInvoices = invoices.filter(inv => inv.clientId === client.id);
+  for (const freq of RECURRING_ORDER) {
+    const recurring = clientInvoices.find(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === freq);
+    if (recurring) return recurring;
+  }
+  // If no recurring, return the latest one-time invoice
+  return clientInvoices.find(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === 'one-time') || null;
+}
+
 // Helper: Get the most frequent recurring billing type for a client
 function getClientBillingInfo(client, invoices) {
   const clientInvoices = invoices.filter(inv => inv.clientId === client.id);
@@ -585,11 +596,14 @@ function Clients() {
                   </td>
                   <td className="py-4 px-4">
                     <div>
-                      {client.fee ? (
-                        <span className="font-medium text-secondary-900">${client.fee}</span>
-                      ) : (
-                        <span className="text-secondary-400">-</span>
-                      )}
+                      {(() => {
+                        const recurringInvoice = getMostFrequentRecurringInvoice(client, invoices);
+                        return recurringInvoice ? (
+                          <span className="font-medium text-secondary-900">${recurringInvoice.amount ? `$${recurringInvoice.amount}` : '-'}</span>
+                        ) : (
+                          <span className="text-secondary-400">-</span>
+                        );
+                      })()}
                       <p className="text-sm text-secondary-600">{getClientBillingInfo(client, invoices)}</p>
                     </div>
                   </td>

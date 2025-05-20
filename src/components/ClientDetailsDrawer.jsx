@@ -93,43 +93,18 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
     return "Unknown";
   };
 
-  // Get the next expected invoice date message
-  const getNextInvoiceMessage = () => {
-    if (!displayData.billingFrequency || displayData.billingFrequency === 'one-time') {
-      return 'No recurring billing';
-    }
-    
-    if (displayData.onHold) {
-      return 'Billing is paused';
-    }
-    
-    if (displayData.nextInvoiceDate) {
-      return `Next invoice on ${formatDate(displayData.nextInvoiceDate)}`;
-    }
-    
-    return 'Not scheduled';
-  };
-
-  // Helper to format status with capital letter and spaces
-  const formatStatus = (status) => {
-    if (!status) return '';
-    return status
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  };
-
   // Helper: Recurring frequency order (most frequent first)
   const RECURRING_ORDER = ['weekly', 'monthly', 'quarterly', 'biannually', 'annually'];
 
-  // Helper: Get the most frequent recurring billing type for a client
-  function getClientBillingInfo(client, invoices) {
+  // Helper: Get the most frequent recurring invoice for a client
+  function getMostFrequentRecurringInvoice(client, invoices) {
     const clientInvoices = invoices.filter(inv => inv.clientId === client.id);
     for (const freq of RECURRING_ORDER) {
-      if (clientInvoices.some(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === freq)) {
-        return formatBillingFrequency(freq);
-      }
+      const recurring = clientInvoices.find(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === freq);
+      if (recurring) return recurring;
     }
-    return 'One-time';
+    // If no recurring, return the latest one-time invoice
+    return clientInvoices.find(inv => inv.billingFrequency && inv.billingFrequency.toLowerCase() === 'one-time') || null;
   }
 
   return (
@@ -238,13 +213,19 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                     <div>
                       <div className="text-sm text-secondary-500">Billing Frequency</div>
                       <div className="text-secondary-900 font-medium">
-                        {getClientBillingInfo(displayData, invoices)}
+                        {(() => {
+                          const recurringInvoice = getMostFrequentRecurringInvoice(displayData, invoices);
+                          return recurringInvoice ? formatBillingFrequency(recurringInvoice.billingFrequency) : 'One-time';
+                        })()}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-secondary-500">Fee Amount</div>
                       <div className="text-secondary-900 font-medium">
-                        {displayData.fee ? `$${displayData.fee}` : '-'}
+                        {(() => {
+                          const recurringInvoice = getMostFrequentRecurringInvoice(displayData, invoices);
+                          return recurringInvoice && recurringInvoice.amount ? `$${recurringInvoice.amount}` : '-';
+                        })()}
                       </div>
                     </div>
                     <div>
@@ -272,7 +253,15 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
                   <div className="p-4 space-y-4">
                     <div>
                       <div className="text-sm text-secondary-500">Next Invoice</div>
-                      <div className="text-secondary-900">{getNextInvoiceMessage()}</div>
+                      <div className="text-secondary-900">
+                        {(() => {
+                          const recurringInvoice = getMostFrequentRecurringInvoice(displayData, invoices);
+                          if (recurringInvoice && recurringInvoice.billingFrequency && recurringInvoice.billingFrequency.toLowerCase() !== 'one-time') {
+                            return recurringInvoice.nextInvoiceDate ? `Next invoice on ${formatDate(recurringInvoice.nextInvoiceDate)}` : 'Recurring billing';
+                          }
+                          return 'No recurring billing';
+                        })()}
+                      </div>
                     </div>
                     <div>
                       <div className="text-sm text-secondary-500">Last Invoiced</div>
