@@ -213,12 +213,22 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
           <div className="text-secondary-600">
             {invoice.activity && invoice.activity.length > 0 ? (
               <ul className="space-y-2">
-                {invoice.activity.map((event, idx) => (
-                  <li key={idx} className="flex items-center space-x-2">
-                    <span className="font-medium text-secondary-800">{event.stage}</span>
-                    <span className="text-xs text-secondary-500">{new Date(event.date).toLocaleString()}</span>
-                  </li>
-                ))}
+                {invoice.activity
+                  .sort((a, b) => new Date(a.date) - new Date(b.date))
+                  .map((event, idx) => {
+                    let label = event.stage;
+                    if (event.type === 'reminder_sent') {
+                      const reminderNum = invoice.activity
+                        .filter(e => e.type === 'reminder_sent' && new Date(e.date) <= new Date(event.date)).length;
+                      label = `${reminderNum === 1 ? '1st' : reminderNum === 2 ? '2nd' : reminderNum === 3 ? '3rd' : reminderNum + 'th'} Reminder Sent`;
+                    }
+                    return (
+                      <li key={idx} className="flex items-center space-x-2">
+                        <span className="font-medium text-secondary-800">{label}</span>
+                        <span className="text-xs text-secondary-500">{new Date(event.date).toLocaleString()}</span>
+                      </li>
+                    );
+                  })}
               </ul>
             ) : (
               <div>No activity recorded for this invoice yet.</div>

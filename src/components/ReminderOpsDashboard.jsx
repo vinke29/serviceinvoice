@@ -38,6 +38,7 @@ const ReminderOpsDashboard = () => {
         if (typeof window !== 'undefined' && user.uid) {
           try {
             agentConfig = await import('../firebaseData').then(mod => mod.getAgentConfig(user.uid));
+            console.log('Loaded agentConfig:', agentConfig);
           } catch (e) { agentConfig = null; }
         }
         const reminderInterval = agentConfig && agentConfig.reminderIntervalDays ? agentConfig.reminderIntervalDays : 3;
@@ -56,17 +57,18 @@ const ReminderOpsDashboard = () => {
             const daysOverdue = Math.floor((now - due) / (1000 * 60 * 60 * 24));
             let stage = '';
             let type = '';
-            if (!isOverdue(due)) {
+            // Use activity log to determine stage
+            let reminderCount = 0;
+            let invoiceSentDate = null;
+            if (Array.isArray(inv.activity)) {
+              reminderCount = inv.activity.filter(a => a.type === 'reminder_sent').length;
+              invoiceSentDate = inv.activity.find(a => a.type === 'invoice_sent')?.date;
+            }
+            if (reminderCount === 0) {
               stage = 'Invoice Sent';
               type = 'invoice';
-            } else if (daysOverdue > 14) {
-              stage = 'Final Notice';
-              type = 'escalation';
-            } else if (daysOverdue > 7) {
-              stage = '2nd Reminder';
-              type = 'reminder';
             } else {
-              stage = '1st Reminder';
+              stage = `${reminderCount === 1 ? '1st' : reminderCount === 2 ? '2nd' : reminderCount === 3 ? '3rd' : reminderCount + 'th'} Reminder Sent`;
               type = 'reminder';
             }
             // Next action: only if reminder interval is defined and type is invoice or reminder
