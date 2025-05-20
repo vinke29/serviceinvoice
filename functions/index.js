@@ -639,11 +639,12 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
     if (!invoiceDoc.exists) throw new functions.https.HttpsError('not-found', 'Invoice not found.');
     const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
     if (!clientDoc.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
-    // Agent config for escalation template
+    // Agent config for escalation template and threshold
     const agentConfigDoc = await admin.firestore().collection('users').doc(userId).collection('agentConfig').doc('main').get();
     const agentConfig = agentConfigDoc.exists ? agentConfigDoc.data() : {};
     const escalationTemplate = (agentConfig.templates && agentConfig.templates.escalation) ||
       'Dear {clientName}, your invoice #{invoiceNumber} for ${amount} is now {daysOverdue} days overdue. This is our final notice before we take further action. Please contact us immediately to avoid further consequences.';
+    const escalationThreshold = agentConfig.escalationDays || 14;
     // Email setup
     sgMail.setApiKey(functions.config().sendgrid.key);
     const invoice = invoiceDoc.data();
@@ -654,40 +655,72 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
     const amount = (invoice.totalAmount || invoice.amount || 0).toFixed(2);
     const currency = invoice.currency || '$';
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-    // Fill template
-    const textBody = escalationTemplate
-      .replace('{clientName}', client.name)
-      .replace('{invoiceNumber}', invoice.invoiceNumber)
-      .replace('{amount}', `${currency}${amount}`)
-      .replace('{dueDate}', new Date(invoice.dueDate).toLocaleDateString())
-      .replace('{daysOverdue}', daysOverdue);
-    // Use same HTML as reminder, but with escalation text
-    const escalationHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Escalation Notice for Invoice #${invoice.invoiceNumber}</title></head>
-      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
-          <tr><td align="center">
-            <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
-              <tr><td style="background:#b91c1c;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
-                <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">ESCALATION NOTICE</span>
-              </td></tr>
-              <tr><td style="padding:32px 40px 0 40px;">
-                <div style="font-size:16px;color:#b91c1c;font-weight:bold;">${senderName}</div>
-                <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
-                <p style="font-size:15px;color:#333;">${textBody}</p>
-                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-                  <tr style="background-color: #f2f2f2;"><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th></tr>
-                  <tr><td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td><td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td><td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td></tr>
-                </table>
-                <p style="font-size:15px;color:#b91c1c;font-weight:bold;">This is our final notice before we take further action.</p>
-                <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
-              </td></tr>
-            </table>
-          </td></tr>
-        </table>
-      </body></html>`;
+    // Choose message based on threshold
+    let textBody, escalationHtml;
+    if (daysOverdue < escalationThreshold) {
+      // Soft, generic escalation message
+      textBody = `Dear ${client.name},\n\nYour invoice #${invoice.invoiceNumber} for ${currency}${amount} is now overdue and requires your immediate attention. This is our final notice before we take further action. Please contact us as soon as possible to resolve this matter.\n\nRegards,\n${senderName}`;
+      escalationHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Escalation Notice for Invoice #${invoice.invoiceNumber}</title></head>
+        <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+                <tr><td style="background:#b91c1c;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                  <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">ESCALATION NOTICE</span>
+                </td></tr>
+                <tr><td style="padding:32px 40px 0 40px;">
+                  <div style="font-size:16px;color:#b91c1c;font-weight:bold;">${senderName}</div>
+                  <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
+                  <p style="font-size:15px;color:#333;">Your invoice <b>#${invoice.invoiceNumber}</b> for <b>${currency}${amount}</b> is now overdue and requires your immediate attention. This is our final notice before we take further action. Please contact us as soon as possible to resolve this matter.</p>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+                    <tr style="background-color: #f2f2f2;"><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th></tr>
+                    <tr><td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td><td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td><td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td></tr>
+                  </table>
+                  <p style="font-size:15px;color:#b91c1c;font-weight:bold;">This is our final notice before we take further action.</p>
+                  <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body></html>`;
+    } else {
+      // Normal escalation template (may mention days overdue)
+      textBody = escalationTemplate
+        .replace('{clientName}', client.name)
+        .replace('{invoiceNumber}', invoice.invoiceNumber)
+        .replace('{amount}', `${currency}${amount}`)
+        .replace('{dueDate}', new Date(invoice.dueDate).toLocaleDateString())
+        .replace('{daysOverdue}', daysOverdue);
+      escalationHtml = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Escalation Notice for Invoice #${invoice.invoiceNumber}</title></head>
+        <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+            <tr><td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+                <tr><td style="background:#b91c1c;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                  <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">ESCALATION NOTICE</span>
+                </td></tr>
+                <tr><td style="padding:32px 40px 0 40px;">
+                  <div style="font-size:16px;color:#b91c1c;font-weight:bold;">${senderName}</div>
+                  <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
+                  <p style="font-size:15px;color:#333;">${textBody}</p>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+                    <tr style="background-color: #f2f2f2;"><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th></tr>
+                    <tr><td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td><td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td><td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td></tr>
+                  </table>
+                  <p style="font-size:15px;color:#b91c1c;font-weight:bold;">This is our final notice before we take further action.</p>
+                  <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+        </body></html>`;
+    }
     const VERIFIED_SENDER = 'billienowcontact@gmail.com';
     const fromName = `${user.name || senderName} via BillieNow`;
     const msg = {
