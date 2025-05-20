@@ -298,10 +298,15 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
       await sgMail.send(msg);
       console.log('Email sent successfully for invoice:', invoiceId, '- Anti-spam measures applied');
       
-      // Update the invoice to mark email as sent
+      // Update the invoice to mark email as sent and log activity
       await snap.ref.update({
         emailSent: true,
-        emailSentAt: admin.firestore.FieldValue.serverTimestamp()
+        emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'invoice_sent',
+          stage: 'Invoice Sent',
+          date: new Date().toISOString()
+        })
       });
 
       return null;
@@ -504,6 +509,14 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
 
     try {
       await sgMail.send(msg);
+      // Log reminder activity
+      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'reminder_sent',
+          stage: 'Reminder Sent',
+          date: new Date().toISOString()
+        })
+      });
       return { success: true, message: 'Reminder sent successfully' };
     } catch (error) {
       console.error('Error sending reminder:', error);

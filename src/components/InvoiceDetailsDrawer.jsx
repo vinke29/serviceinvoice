@@ -210,7 +210,20 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice }) {
           </div>
         )}
         {tab === 'activity' && (
-          <div className="text-secondary-600">Invoice activity log (coming soon)</div>
+          <div className="text-secondary-600">
+            {invoice.activity && invoice.activity.length > 0 ? (
+              <ul className="space-y-2">
+                {invoice.activity.map((event, idx) => (
+                  <li key={idx} className="flex items-center space-x-2">
+                    <span className="font-medium text-secondary-800">{event.stage}</span>
+                    <span className="text-xs text-secondary-500">{new Date(event.date).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div>No activity recorded for this invoice yet.</div>
+            )}
+          </div>
         )}
       </div>
     </Drawer>

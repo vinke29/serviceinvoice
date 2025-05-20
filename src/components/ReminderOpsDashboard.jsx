@@ -57,7 +57,7 @@ const ReminderOpsDashboard = () => {
             let stage = '';
             let type = '';
             if (!isOverdue(due)) {
-              stage = '1st Invoice';
+              stage = 'Invoice Sent';
               type = 'invoice';
             } else if (daysOverdue > 14) {
               stage = 'Final Notice';
