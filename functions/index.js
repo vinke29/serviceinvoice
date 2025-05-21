@@ -1082,3 +1082,22 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
     throw new functions.https.HttpsError('internal', error.message || 'Unknown error');
   }
 });
+
+// Log activity when an invoice is updated
+exports.logInvoiceUpdate = functions.firestore
+  .document('users/{userId}/invoices/{invoiceId}')
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    // Only log if something actually changed
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      await change.after.ref.update({
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'invoice_updated',
+          stage: 'Invoice Updated',
+          date: new Date().toISOString()
+        })
+      });
+    }
+    return null;
+  });
