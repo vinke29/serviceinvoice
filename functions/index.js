@@ -42,6 +42,14 @@ exports.sendInvoiceEmail = functions.firestore
   .document('users/{userId}/invoices/{invoiceId}')
   .onCreate(async (snap, context) => {
     try {
+      // Log 'Invoice Created' activity immediately
+      await snap.ref.update({
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'invoice_created',
+          stage: 'Invoice Created',
+          date: new Date().toISOString()
+        })
+      });
       // Initialize SendGrid with API key from Firebase config
       sgMail.setApiKey(functions.config().sendgrid.key);
       

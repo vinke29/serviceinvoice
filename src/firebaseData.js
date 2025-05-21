@@ -180,7 +180,9 @@ export async function addInvoice(uid, invoice) {
 export async function updateInvoice(uid, invoice) {
   try {
     const ref = doc(db, 'users', uid, 'invoices', invoice.id);
-    await withTimeout(updateDoc(ref, invoice));
+    // Remove the activity field before updating
+    const { activity, ...invoiceWithoutActivity } = invoice;
+    await withTimeout(updateDoc(ref, invoiceWithoutActivity));
     return true;
   } catch (error) {
     console.error('Error updating invoice:', error);

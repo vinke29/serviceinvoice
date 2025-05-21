@@ -227,24 +227,39 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
         {tab === 'activity' && (
           <div className="text-secondary-600">
             {currentInvoice.activity && currentInvoice.activity.length > 0 ? (
-              <ul className="space-y-2">
-                {currentInvoice.activity
+              (() => {
+                // Deduplicate only exact duplicate objects
+                const uniqueActivity = [];
+                const seen = new Set();
+                currentInvoice.activity
                   .sort((a, b) => new Date(a.date) - new Date(b.date))
-                  .map((event, idx) => {
-                    let label = event.stage;
-                    if (event.type === 'reminder_sent') {
-                      const reminderNum = currentInvoice.activity
-                        .filter(e => e.type === 'reminder_sent' && new Date(e.date) <= new Date(event.date)).length;
-                      label = `${reminderNum === 1 ? '1st' : reminderNum === 2 ? '2nd' : reminderNum === 3 ? '3rd' : reminderNum + 'th'} Reminder Sent`;
+                  .forEach(event => {
+                    const key = JSON.stringify(event);
+                    if (!seen.has(key)) {
+                      uniqueActivity.push(event);
+                      seen.add(key);
                     }
-                    return (
-                      <li key={idx} className="flex items-center space-x-2">
-                        <span className="font-medium text-secondary-800">{label}</span>
-                        <span className="text-xs text-secondary-500">{new Date(event.date).toLocaleString()}</span>
-                      </li>
-                    );
-                  })}
-              </ul>
+                  });
+                return (
+                  <ul className="space-y-2">
+                    {uniqueActivity.map((event, idx) => {
+                      let label = event.stage;
+                      if (event.type === 'reminder_sent') {
+                        const reminderNum = uniqueActivity
+                          .filter(e => e.type === 'reminder_sent' && new Date(e.date) <= new Date(event.date)).length;
+                        label = `${reminderNum === 1 ? '1st' : reminderNum === 2 ? '2nd' : reminderNum === 3 ? '3rd' : reminderNum + 'th'} Reminder Sent`;
+                      }
+                      if (!label) return null;
+                      return (
+                        <li key={idx} className="flex items-center space-x-2">
+                          <span className="font-medium text-secondary-800">{label}</span>
+                          <span className="text-xs text-secondary-500">{new Date(event.date).toLocaleString()}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                );
+              })()
             ) : (
               <div>No activity recorded for this invoice yet.</div>
             )}
