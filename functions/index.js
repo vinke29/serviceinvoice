@@ -1083,21 +1083,29 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
   }
 });
 
-// Log activity when an invoice is updated
+// Log activity when an invoice is updated (avoid infinite loop)
 exports.logInvoiceUpdate = functions.firestore
   .document('users/{userId}/invoices/{invoiceId}')
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
-    // Only log if something actually changed
-    if (JSON.stringify(before) !== JSON.stringify(after)) {
-      await change.after.ref.update({
-        activity: admin.firestore.FieldValue.arrayUnion({
-          type: 'invoice_updated',
-          stage: 'Invoice Updated',
-          date: new Date().toISOString()
-        })
-      });
+
+    // Destructure activity arrays and compare the rest
+    const { activity: beforeActivity = [], ...beforeRest } = before;
+    const { activity: afterActivity = [], ...afterRest } = after;
+
+    // If only the activity array changed, do nothing
+    if (JSON.stringify(beforeRest) === JSON.stringify(afterRest)) {
+      return null;
     }
+
+    // Otherwise, log the update
+    await change.after.ref.update({
+      activity: admin.firestore.FieldValue.arrayUnion({
+        type: 'invoice_updated',
+        stage: 'Invoice Updated',
+        date: new Date().toISOString()
+      })
+    });
     return null;
   });
