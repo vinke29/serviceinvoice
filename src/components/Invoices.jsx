@@ -24,6 +24,7 @@ import MobileInvoiceTile from './MobileInvoiceTile';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import UpdateScheduledInvoicesModal from './UpdateScheduledInvoicesModal';
 import ActiveInvoiceUpdateModal from './ActiveInvoiceUpdateModal';
+import DeleteInvoiceModal from './DeleteInvoiceModal.jsx';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -581,7 +582,7 @@ function Invoices() {
   const [isMobile, setIsMobile] = useState(true); // Force mobile view for testing
   const [successMessage, setSuccessMessage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [deleteModalData, setDeleteModalData] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionInvoice, setActionInvoice] = useState(null);
@@ -1061,19 +1062,61 @@ function Invoices() {
 
   // Delete invoice
   const handleDeleteInvoice = async (invoice) => {
-    setInvoiceToDelete(invoice);
+    const user = auth.currentUser;
+    if (!user) return;
+    // Determine if this is a recurring/scheduled invoice
+    const isRecurring = invoice.isRecurring || invoice.billingFrequency !== 'one-time';
+    const isScheduled = invoice.status === 'scheduled';
+    let futureInvoices = [];
+    if (isRecurring || isScheduled) {
+      // Find all future scheduled invoices for this client/series
+      const allInvoices = await getInvoices(user.uid);
+      futureInvoices = allInvoices.filter(inv =>
+        inv.clientId === invoice.clientId &&
+        inv.status === 'scheduled' &&
+        inv.description === invoice.description &&
+        new Date(inv.date) >= new Date(invoice.date) &&
+        inv.id !== invoice.id
+      );
+    }
+    setDeleteModalData({
+      invoice,
+      futureInvoices,
+      isRecurring,
+      isScheduled,
+      client: clients.find(c => c.id === invoice.clientId)
+    });
     setShowDeleteModal(true);
   };
 
   // Confirm delete handler
-  const confirmDeleteInvoice = async () => {
+  const handleDeleteModalConfirm = async (options) => {
+    setShowDeleteModal(false);
+    if (!deleteModalData) return;
+    const { invoice, futureInvoices, client } = deleteModalData;
     const user = auth.currentUser;
-    if (invoiceToDelete && user) {
-      await deleteInvoice(user.uid, invoiceToDelete.id);
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceToDelete.id));
-      setShowDeleteModal(false);
-      setInvoiceToDelete(null);
+    if (!user) return;
+    let deletedInvoices = [];
+    if (options.scope === 'single') {
+      await deleteInvoice(user.uid, invoice.id);
+      deletedInvoices = [invoice];
+      setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+    } else {
+      // Delete this and all future scheduled invoices
+      const idsToDelete = [invoice.id, ...futureInvoices.map(inv => inv.id)];
+      for (const id of idsToDelete) {
+        await deleteInvoice(user.uid, id);
+      }
+      deletedInvoices = [invoice, ...futureInvoices];
+      setInvoices(prev => prev.filter(inv => !idsToDelete.includes(inv.id)));
     }
+    // Optionally notify client
+    if (options.notifyClient && client) {
+      // TODO: Call Firebase function to send deletion notification
+      // await sendInvoiceDeleteNotification({ userId: user.uid, invoiceIds: deletedInvoices.map(inv => inv.id), clientId: client.id, scope: options.scope });
+    }
+    setDeleteModalData(null);
+    setSuccessMessage(`Deleted ${deletedInvoices.length} invoice${deletedInvoices.length > 1 ? 's' : ''}.`);
   };
 
   // Send a scheduled invoice now
@@ -2423,28 +2466,16 @@ function Invoices() {
         />
       )}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-semibold text-secondary-900 mb-2">Delete Invoice</h3>
-            <p className="text-secondary-700 mb-4">Are you sure you want to delete this invoice? This action cannot be undone.</p>
-            <div className="flex justify-end space-x-2">
-              <button
-                className="px-4 py-2 rounded-lg bg-secondary-100 text-secondary-700 hover:bg-secondary-200"
-                onClick={() => { setShowDeleteModal(false); setInvoiceToDelete(null); }}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                onClick={confirmDeleteInvoice}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteInvoiceModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteModalConfirm}
+        invoice={deleteModalData?.invoice}
+        futureInvoicesCount={deleteModalData?.futureInvoices?.length || 0}
+        isRecurring={deleteModalData?.isRecurring}
+        isScheduled={deleteModalData?.isScheduled}
+        clientName={deleteModalData?.client?.name || ''}
+      />
 
       <UpdateScheduledInvoicesModal
         isOpen={showUpdateModal}
