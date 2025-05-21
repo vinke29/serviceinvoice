@@ -15,10 +15,25 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
   const [userProfile, setUserProfile] = useState(null)
   const [client, setClient] = useState(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [currentInvoice, setCurrentInvoice] = useState(invoice)
 
   useEffect(() => {
     setTab('details')
+    setCurrentInvoice(invoice)
   }, [invoice])
+
+  useEffect(() => {
+    if (tab === 'activity' && invoice?.id && auth.currentUser) {
+      const fetchLatestInvoice = async () => {
+        const invoiceRef = doc(db, 'users', auth.currentUser.uid, 'invoices', invoice.id);
+        const invoiceSnap = await getDoc(invoiceRef);
+        if (invoiceSnap.exists()) {
+          setCurrentInvoice({ ...invoiceSnap.data(), id: invoice.id });
+        }
+      };
+      fetchLatestInvoice();
+    }
+  }, [tab, invoice])
 
   // Load agent config and user profile on mount
   useEffect(() => {
@@ -120,10 +135,10 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
     }
   }
 
-  if (!invoice) return null
+  if (!currentInvoice) return null
 
   // Format the invoice number
-  const displayInvoiceNumber = invoice.invoiceNumber || `INV-${invoice.id.substring(0, 4).toUpperCase()}`
+  const displayInvoiceNumber = currentInvoice.invoiceNumber || `INV-${currentInvoice.id.substring(0, 4).toUpperCase()}`
 
   return (
     <Drawer isOpen={isOpen} onClose={onClose} title={`Invoice: ${displayInvoiceNumber}`}>
@@ -176,33 +191,33 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
                 )}
               </button>
             </div>
-            <div className="text-xs text-secondary-500">ID: {invoice.id}</div>
-            <div className="text-secondary-700">Client: {invoice.clientName}</div>
-            <div className="text-secondary-600 text-sm">Amount: <span className="font-bold text-secondary-900">${invoice.amount}</span></div>
-            <div className="text-secondary-600 text-sm">Status: <span className={`px-2 py-1 rounded-full text-xs font-bold ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' : invoice.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}</span></div>
+            <div className="text-xs text-secondary-500">ID: {currentInvoice.id}</div>
+            <div className="text-secondary-700">Client: {currentInvoice.clientName}</div>
+            <div className="text-secondary-600 text-sm">Amount: <span className="font-bold text-secondary-900">${currentInvoice.amount}</span></div>
+            <div className="text-secondary-600 text-sm">Status: <span className={`px-2 py-1 rounded-full text-xs font-bold ${currentInvoice.status === 'paid' ? 'bg-green-100 text-green-800' : currentInvoice.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{currentInvoice.status.charAt(0).toUpperCase() + currentInvoice.status.slice(1)}</span></div>
             <div className="text-secondary-600 text-sm">
-              Invoice Date: {new Date(invoice.date || invoice.createdAt).toLocaleDateString()}
+              Invoice Date: {new Date(currentInvoice.date || currentInvoice.createdAt).toLocaleDateString()}
             </div>
             <div className="text-secondary-600 text-sm">
-              Due Date: {new Date(invoice.dueDate).toLocaleDateString()} 
+              Due Date: {new Date(currentInvoice.dueDate).toLocaleDateString()} 
               {agentConfig && <span className="text-xs text-secondary-500 ml-1">(Net {agentConfig.netDays} days)</span>}
             </div>
-            {invoice.paidDate && <div className="text-secondary-600 text-sm">Paid Date: {new Date(invoice.paidDate).toLocaleDateString()}</div>}
-            <div className="text-secondary-600 text-sm">Description: {invoice.description}</div>
+            {currentInvoice.paidDate && <div className="text-secondary-600 text-sm">Paid Date: {new Date(currentInvoice.paidDate).toLocaleDateString()}</div>}
+            <div className="text-secondary-600 text-sm">Description: {currentInvoice.description}</div>
             <div className="text-secondary-600 text-sm">
-              Billing Type: {invoice.billingFrequency ? 
-                (invoice.billingFrequency === 'one-time' ? 
+              Billing Type: {currentInvoice.billingFrequency ? 
+                (currentInvoice.billingFrequency === 'one-time' ? 
                   'One-Time Charge' : 
-                  `Recurring (${invoice.billingFrequency.charAt(0).toUpperCase() + invoice.billingFrequency.slice(1)})`) : 
+                  `Recurring (${currentInvoice.billingFrequency.charAt(0).toUpperCase() + currentInvoice.billingFrequency.slice(1)})`) : 
                 'Not specified'}
             </div>
           </div>
         )}
         {tab === 'payments' && (
           <div className="text-secondary-600">
-            {invoice.paidAt ? (
+            {currentInvoice.paidAt ? (
               <div className="mb-2">
-                <span className="font-medium text-secondary-900">Paid on:</span> {format(new Date(invoice.paidAt), 'PPP')}
+                <span className="font-medium text-secondary-900">Paid on:</span> {format(new Date(currentInvoice.paidAt), 'PPP')}
               </div>
             ) : (
               <div>No payments recorded for this invoice yet.</div>
@@ -211,14 +226,14 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
         )}
         {tab === 'activity' && (
           <div className="text-secondary-600">
-            {invoice.activity && invoice.activity.length > 0 ? (
+            {currentInvoice.activity && currentInvoice.activity.length > 0 ? (
               <ul className="space-y-2">
-                {invoice.activity
+                {currentInvoice.activity
                   .sort((a, b) => new Date(a.date) - new Date(b.date))
                   .map((event, idx) => {
                     let label = event.stage;
                     if (event.type === 'reminder_sent') {
-                      const reminderNum = invoice.activity
+                      const reminderNum = currentInvoice.activity
                         .filter(e => e.type === 'reminder_sent' && new Date(e.date) <= new Date(event.date)).length;
                       label = `${reminderNum === 1 ? '1st' : reminderNum === 2 ? '2nd' : reminderNum === 3 ? '3rd' : reminderNum + 'th'} Reminder Sent`;
                     }
@@ -241,7 +256,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
         <div className="mt-8 flex justify-end">
           <button
             className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 text-lg font-medium"
-            onClick={() => onEditInvoice(invoice)}
+            onClick={() => onEditInvoice(currentInvoice)}
           >
             Edit Invoice
           </button>
