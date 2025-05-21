@@ -8,9 +8,15 @@ import { invoiceGenerationService } from '../services/invoiceGenerationService'
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function StatCard({ title, value, icon, color }) {
+function StatCard({ title, value, icon, color, onClick, clickable }) {
   return (
-    <div className="bg-white rounded-2xl shadow-soft p-6 relative overflow-hidden">
+    <div
+      className={`bg-white rounded-2xl shadow-soft p-6 relative overflow-hidden transition cursor-${clickable ? 'pointer' : 'default'} ${clickable ? 'hover:shadow-lg hover:bg-primary-50/30' : ''}`}
+      onClick={clickable ? onClick : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      role={clickable ? 'button' : undefined}
+      aria-label={clickable ? title : undefined}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-secondary-600">{title}</p>
@@ -541,29 +547,57 @@ function Dashboard() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <StatCard 
-              title={`Expected ${selectedMonth !== null ? months[selectedMonth] + ' ' : ''}${selectedYear} Revenue`} 
-              value={`$${Math.round(revenue.expected)}`} 
-              icon={<span>📅</span>} 
-              color="text-primary-600" 
+            <StatCard
+              title={`Expected ${selectedMonth !== null ? months[selectedMonth] + ' ' : ''}${selectedYear} Revenue`}
+              value={`$${Math.round(revenue.expected)}`}
+              icon={<span>📅</span>}
+              color="text-primary-600"
+              clickable={true}
+              onClick={() => {
+                // Go to invoices page, filtered by year/month if selected
+                let url = '/invoices';
+                const params = [];
+                if (selectedYear) params.push(`year=${selectedYear}`);
+                if (selectedMonth !== null) params.push(`month=${selectedMonth + 1}`);
+                if (params.length) url += '?' + params.join('&');
+                navigate(url);
+              }}
             />
-            <StatCard 
-              title={`Received in ${selectedMonth !== null ? months[selectedMonth] + ' ' : ''}${selectedYear}`} 
-              value={`$${Math.round(revenue.received)}`} 
-              icon={<span>💰</span>} 
-              color="text-green-600" 
+            <StatCard
+              title={`Received in ${selectedMonth !== null ? months[selectedMonth] + ' ' : ''}${selectedYear}`}
+              value={`$${Math.round(revenue.received)}`}
+              icon={<span>💰</span>}
+              color="text-green-600"
+              clickable={true}
+              onClick={() => {
+                // Go to invoices page, filtered by paid status, year/month if selected
+                let url = '/invoices?status=paid';
+                if (selectedYear) url += `&year=${selectedYear}`;
+                if (selectedMonth !== null) url += `&month=${selectedMonth + 1}`;
+                navigate(url);
+              }}
             />
-            <StatCard 
-              title="Pending Payments" 
-              value={`$${Math.round(revenue.pending)}`} 
-              icon={<span>⏳</span>} 
-              color="text-orange-600" 
+            <StatCard
+              title="Pending Payments"
+              value={`$${Math.round(revenue.pending)}`}
+              icon={<span>⏳</span>}
+              color="text-orange-600"
+              clickable={true}
+              onClick={() => {
+                // Go to invoices page, filtered by pending status, year/month if selected
+                let url = '/invoices?status=pending';
+                if (selectedYear) url += `&year=${selectedYear}`;
+                if (selectedMonth !== null) url += `&month=${selectedMonth + 1}`;
+                navigate(url);
+              }}
             />
-            <StatCard 
-              title="Total Clients" 
-              value={totalClients} 
-              icon={<span>👥</span>} 
-              color="text-secondary-600" 
+            <StatCard
+              title="Total Clients"
+              value={totalClients}
+              icon={<span>👥</span>}
+              color="text-secondary-600"
+              clickable={true}
+              onClick={() => navigate('/clients')}
             />
           </div>
 

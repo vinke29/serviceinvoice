@@ -1304,6 +1304,17 @@ function Invoices() {
     }
   }
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get('status');
+    if (status) {
+      // Capitalize first letter for filter match (e.g., 'Paid', 'Pending')
+      setStatusFilter([status.charAt(0).toUpperCase() + status.slice(1)]);
+    } else {
+      setStatusFilter([]);
+    }
+  }, [location.search]);
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1404,7 +1415,7 @@ function Invoices() {
                 inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 inv.description.toLowerCase().includes(searchTerm.toLowerCase());
               // Status filter
-              const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
+              const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status.charAt(0).toUpperCase() + inv.status.slice(1));
               // Date filters
               const dueDate = new Date(inv.dueDate);
               const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
@@ -1454,7 +1465,7 @@ function Invoices() {
                     inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     inv.description.toLowerCase().includes(searchTerm.toLowerCase());
                   // Status filter
-                  const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
+                  const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status.charAt(0).toUpperCase() + inv.status.slice(1));
                   // Date filters
                   const dueDate = new Date(inv.dueDate);
                   const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
