@@ -1309,6 +1309,9 @@ function Invoices() {
 
   // Find the main invoice list/table render and add this above it:
   if (isMobile) {
+    // Separate scheduled and regular invoices
+    const regularInvoices = invoices.filter(inv => !inv.deleted && inv.status !== 'scheduled');
+    const scheduledInvoices = invoices.filter(inv => !inv.deleted && inv.status === 'scheduled');
     return (
       <div className="p-2 pb-24">
         <div className="sticky top-0 z-10 bg-white pb-2">
@@ -1390,55 +1393,89 @@ function Invoices() {
             </div>
           </div>
         )}
-        {/* Invoice Tiles */}
-        {invoices.filter(inv => !inv.deleted).filter(inv => {
-          // Apply search and filters
-          const matchesSearch =
-            inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            inv.description.toLowerCase().includes(searchTerm.toLowerCase());
-          // Status filter
-          const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
-          // Date filters
-          const dueDate = new Date(inv.dueDate);
-          const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
-          const invoiceDate = new Date(inv.date || inv.createdAt);
-          const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
-          return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
-        }).map((invoice) => (
-          <MobileInvoiceTile
-            key={invoice.id}
-            invoice={invoice}
-            onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
-            onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
-            onEdit={() => handleEditInvoice(invoice)}
-            onDelete={async () => {
-              const user = auth.currentUser;
-              if (user) {
-                try {
-                  await deleteInvoice(user.uid, invoice.id);
-                  setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-                  showToast('success', 'Invoice deleted.');
-                } catch (error) {
-                  showToast('error', 'Failed to delete invoice.');
-                }
-              }
-            }}
-            onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
-            onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
-          />
-        ))}
-        {/* Action Modal/Bottom Sheet */}
-        {actionModalOpen && actionInvoice && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40" onClick={() => setActionModalOpen(false)}>
-            <div className="bg-white rounded-t-2xl shadow-xl w-full max-w-md mx-auto p-6" onClick={e => e.stopPropagation()}>
-              <div className="text-lg font-bold mb-4">Actions</div>
-              <button className="w-full py-3 mb-2 rounded-lg bg-blue-50 text-blue-700 font-semibold text-base" onClick={() => { setActionModalOpen(false); handleEditInvoice(actionInvoice); }}>Edit</button>
-              <button className="w-full py-3 mb-2 rounded-lg bg-red-50 text-red-700 font-semibold text-base" onClick={() => { setActionModalOpen(false); handleDeleteInvoice(actionInvoice); }}>Delete</button>
-              <button className="w-full py-3 mb-2 rounded-lg bg-yellow-50 text-yellow-700 font-semibold text-base" onClick={e => { setActionModalOpen(false); handleSendReminder(actionInvoice, setInvoices, setSelectedInvoice, e); }}>Send Reminder</button>
-              <button className="w-full py-3 mb-2 rounded-lg bg-purple-50 text-purple-700 font-semibold text-base" onClick={e => { setActionModalOpen(false); handleSendEscalation(actionInvoice, setInvoices, setSelectedInvoice, e); }}>Send Escalation</button>
-              <button className="w-full py-3 mt-2 rounded-lg bg-secondary-100 text-secondary-700 font-semibold text-base" onClick={() => setActionModalOpen(false)}>Cancel</button>
-            </div>
-          </div>
+        {/* Regular Invoices */}
+        {regularInvoices.length > 0 && (
+          <>
+            <div className="text-lg font-semibold text-secondary-700 mt-4 mb-2">Invoices</div>
+            {regularInvoices.filter(inv => {
+              // Apply search and filters
+              const matchesSearch =
+                inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                inv.description.toLowerCase().includes(searchTerm.toLowerCase());
+              // Status filter
+              const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
+              // Date filters
+              const dueDate = new Date(inv.dueDate);
+              const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
+              const invoiceDate = new Date(inv.date || inv.createdAt);
+              const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
+              return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
+            }).map((invoice) => (
+              <MobileInvoiceTile
+                key={invoice.id}
+                invoice={invoice}
+                onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
+                onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
+                onEdit={() => handleEditInvoice(invoice)}
+                onDelete={async () => {
+                  const user = auth.currentUser;
+                  if (user) {
+                    try {
+                      await deleteInvoice(user.uid, invoice.id);
+                      setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+                      showToast('success', 'Invoice deleted.');
+                    } catch (error) {
+                      showToast('error', 'Failed to delete invoice.');
+                    }
+                  }
+                }}
+                onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
+                onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
+              />
+            ))}
+          </>
+        )}
+        {/* Scheduled Invoices */}
+        {scheduledInvoices.length > 0 && (
+          <>
+            <div className="text-lg font-semibold text-secondary-700 mt-8 mb-2">Scheduled Invoices</div>
+            {scheduledInvoices.filter(inv => {
+              // Apply search and filters
+              const matchesSearch =
+                inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                inv.description.toLowerCase().includes(searchTerm.toLowerCase());
+              // Status filter
+              const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
+              // Date filters
+              const dueDate = new Date(inv.dueDate);
+              const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
+              const invoiceDate = new Date(inv.date || inv.createdAt);
+              const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
+              return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
+            }).map((invoice) => (
+              <MobileInvoiceTile
+                key={invoice.id}
+                invoice={invoice}
+                onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
+                onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
+                onEdit={() => handleEditInvoice(invoice)}
+                onDelete={async () => {
+                  const user = auth.currentUser;
+                  if (user) {
+                    try {
+                      await deleteInvoice(user.uid, invoice.id);
+                      setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+                      showToast('success', 'Invoice deleted.');
+                    } catch (error) {
+                      showToast('error', 'Failed to delete invoice.');
+                    }
+                  }
+                }}
+                onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
+                onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
+              />
+            ))}
+          </>
         )}
         <div className="text-center text-xs text-secondary-400 mt-8">Version 0.3.0</div>
       </div>
