@@ -27,7 +27,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
       if (user) {
         // Get agent config
         const config = await getAgentConfig(user.uid)
-        setAgentConfig(config || { netDays: 7 }) // Default to 7 days if not set
+        setAgentConfig(config || { netDays: 0 }) // Default to 0 days if not set
         
         // Get user profile
         try {

@@ -258,9 +258,9 @@ class PdfService {
                   style: 'lateFee',
                   margin: [0, 15, 0, 0]
                 } : {
-                  text: agentConfig.netDays === 0
+                  text: (!agentConfig.netDays || agentConfig.netDays === 0)
                     ? 'Payment is due immediately upon receipt.'
-                    : `Payment is due within ${agentConfig.netDays || 7} days of invoice date.`,
+                    : `Payment is due within ${agentConfig.netDays} days of invoice date.`,
                   style: 'lateFee',
                   margin: [0, 15, 0, 0]
                 }
@@ -482,11 +482,20 @@ class PdfService {
       
       doc.setFontSize(9);
       doc.setTextColor(100, 100, 100);
-      if (client.address) {
-        doc.text(client.address, 20, 79);
+      // Compose full address for client (fallback PDF)
+      let y = 79;
+      if (client.street) {
+        doc.text(client.street, 20, y);
+        y += 6;
       }
-      if (client.city && client.state) {
-        doc.text(`${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}`, 20, 85);
+      const cityStateZip = [client.city, client.state, client.postalCode].filter(Boolean).join(', ');
+      if (cityStateZip) {
+        doc.text(cityStateZip, 20, y);
+        y += 6;
+      }
+      if (client.country) {
+        doc.text(client.country, 20, y);
+        y += 6;
       }
       if (client.email) {
         doc.text(client.email, 20, 91);
@@ -568,9 +577,9 @@ class PdfService {
       
       doc.setFontSize(9);
       doc.setFont(undefined, 'italic');
-      const lateFeePolicyText = agentConfig.lateFeePolicy || (agentConfig.netDays === 0
+      const lateFeePolicyText = agentConfig.lateFeePolicy || ((!agentConfig.netDays || agentConfig.netDays === 0)
         ? 'Payment is due immediately upon receipt.'
-        : `Payment is due within ${agentConfig.netDays || 7} days of invoice date.`);
+        : `Payment is due within ${agentConfig.netDays} days of invoice date.`);
       
       doc.text(lateFeePolicyText, 105, footerY, { align: 'center' });
       footerY += 15;
