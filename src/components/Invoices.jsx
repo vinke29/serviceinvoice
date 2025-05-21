@@ -1351,9 +1351,8 @@ function Invoices() {
       const updatedInvoice = {
         ...invoice,
         status: 'pending',
-        // Optionally, you can store original dates in custom fields if needed
-        // For now, just keep the current dates
       };
+      delete updatedInvoice.paidAt; // Remove the paidAt field
       await updateInvoice(user.uid, updatedInvoice);
       setInvoices(prev => prev.map(inv => inv.id === invoice.id ? updatedInvoice : inv));
       setSelectedInvoice && setSelectedInvoice(prev => prev && prev.id === invoice.id ? updatedInvoice : prev);
