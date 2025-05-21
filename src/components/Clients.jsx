@@ -812,7 +812,7 @@ function Clients() {
       >
         <ClientForm
           client={editingClient}
-          onSubmit={handleAddClient}
+          onSubmit={editingClient ? handleEditClient : handleAddClient}
           onCancel={() => {
             setShowForm(false)
             setEditingClient(null)
