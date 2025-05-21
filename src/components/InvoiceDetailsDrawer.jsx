@@ -237,7 +237,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
         )}
       </div>
       {/* Add Edit Invoice button at the bottom */}
-      {typeof onEditInvoice === 'function' && (
+      {typeof onEditInvoice === 'function' && tab === 'details' && (
         <div className="mt-8 flex justify-end">
           <button
             className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 text-lg font-medium"

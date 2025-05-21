@@ -362,14 +362,16 @@ function ClientDetailsDrawer({ isOpen, onClose, client, invoices = [], payments 
             )}
 
             {/* Edit Button */}
-            <div className="mt-6">
-              <button
-                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-                onClick={() => setEditMode(true)}
-              >
-                Edit Client
-              </button>
-            </div>
+            {tab === 'info' && (
+              <div className="mt-6">
+                <button
+                  className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                  onClick={() => setEditMode(true)}
+                >
+                  Edit Client
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <ClientForm
