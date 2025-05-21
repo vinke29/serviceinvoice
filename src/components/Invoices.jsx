@@ -29,6 +29,7 @@ import DeleteInvoiceModal from './DeleteInvoiceModal.jsx';
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
 const sendInvoiceUpdateNotification = httpsCallable(functions, 'sendInvoiceUpdateNotification');
+const sendInvoiceDeleteNotification = httpsCallable(functions, 'sendInvoiceDeleteNotification');
 console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
 console.log("sendInvoiceEscalation is defined:", typeof sendInvoiceEscalation);
 
@@ -1112,8 +1113,16 @@ function Invoices() {
     }
     // Optionally notify client
     if (options.notifyClient && client) {
-      // TODO: Call Firebase function to send deletion notification
-      // await sendInvoiceDeleteNotification({ userId: user.uid, invoiceIds: deletedInvoices.map(inv => inv.id), clientId: client.id, scope: options.scope });
+      try {
+        await sendInvoiceDeleteNotification({
+          userId: user.uid,
+          invoiceIds: deletedInvoices.map(inv => inv.id),
+          clientId: client.id,
+          scope: options.scope
+        });
+      } catch (error) {
+        console.error('Error sending invoice deletion notification:', error);
+      }
     }
     setDeleteModalData(null);
     setSuccessMessage(`Deleted ${deletedInvoices.length} invoice${deletedInvoices.length > 1 ? 's' : ''}.`);
