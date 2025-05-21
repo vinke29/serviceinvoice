@@ -223,160 +223,96 @@ function UserProfile() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-primary-700 mb-6">Business Profile</h1>
-      
-      <div className="mb-6 text-gray-600 text-sm bg-blue-50 p-4 rounded">
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold text-primary-700 mb-4 sm:mb-6 text-center">Business Profile</h1>
+      <div className="mb-4 sm:mb-6 text-gray-600 text-sm bg-blue-50 p-3 sm:p-4 rounded text-center">
         <p>This information will appear on your invoices and emails to clients.</p>
       </div>
-
-      {/* Debug info in dev mode - will help you troubleshoot */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-6 text-xs bg-gray-100 p-3 rounded overflow-auto max-h-40">
-          <p className="font-bold">Debug info:</p>
-          <pre>{JSON.stringify({firstName: formData.firstName, lastName: formData.lastName, companyName: formData.companyName, phone: formData.phone}, null, 2)}</pre>
+      {/* Logo at the top, centered */}
+      <div className="flex flex-col items-center mb-6">
+        <div className="relative mb-2">
+          {formData.logo ? (
+            <img
+              src={formData.logo}
+              alt="Company Logo"
+              className="w-24 h-24 object-contain border rounded-full shadow-sm bg-white"
+            />
+          ) : (
+            <div className="w-24 h-24 flex items-center justify-center rounded-full border bg-gray-100 text-gray-400 text-4xl font-bold">
+              {formData.companyName ? formData.companyName[0] : '?'}
+            </div>
+          )}
+          <label className="absolute bottom-0 right-0 bg-primary-600 text-white rounded-full p-1 cursor-pointer shadow-md hover:bg-primary-700 transition" title="Change logo">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="hidden"
+              disabled={saving}
+            />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6-6M7 17h8a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          </label>
         </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Personal Information */}
-          <div className="col-span-2">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Profile Information</h2>
+        {saving && (
+          <div className="mt-2 text-sm text-primary-600 flex items-center">
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Uploading logo...
           </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-            <input
-              type="text"
-              name="companyName"
-              value={formData.companyName}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
-            <PhoneInput
-              country={'us'}
-              value={formData.phone}
-              onChange={phone => setFormData({ ...formData, phone })}
-              inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              containerClass="w-full"
-            />
-          </div>
-
-          {/* Business Information */}
-          <div className="col-span-2 mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Business Information</h2>
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID / Business Number</label>
-            <input
-              type="text"
-              name="taxId"
-              value={formData.taxId}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-            <input
-              type="url"
-              name="website"
-              value={formData.website}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
-            <div className="flex items-center space-x-4">
-              {formData.logo && (
-                <img 
-                  src={formData.logo} 
-                  alt="Company Logo" 
-                  className="w-16 h-16 object-contain border rounded"
-                />
-              )}
-              <div className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="block w-full text-sm text-gray-500 
-                  file:mr-4 file:py-2 file:px-4 
-                  file:rounded-md file:border-0 
-                  file:text-sm file:font-semibold 
-                  file:bg-primary-50 file:text-primary-700 
-                  hover:file:bg-primary-100"
-                  disabled={saving}
-                />
-                {saving && (
-                  <div className="mt-2 text-sm text-primary-600 flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Uploading logo...
-                  </div>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Upload your company logo (max 5MB). This will appear on your invoices and emails.
-                </p>
-              </div>
+        )}
+        <p className="mt-1 text-xs text-gray-500 text-center">Upload your company logo (max 5MB). This will appear on your invoices and emails.</p>
+      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Profile Information */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Profile Information</h2>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+              <input type="text" name="firstName" value={formData.firstName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+              <input type="text" name="companyName" value={formData.companyName} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
+              <PhoneInput country={'us'} value={formData.phone} onChange={phone => setFormData({ ...formData, phone })} inputClass="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" containerClass="w-full" />
             </div>
           </div>
-          
-          {/* Address */}
-          <div className="col-span-2 mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Address</h2>
+        </div>
+        {/* Business Information */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Business Information</h2>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tax ID / Business Number</label>
+              <input type="text" name="taxId" value={formData.taxId} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+              <input type="url" name="website" value={formData.website} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
           </div>
-          
-          <div className="col-span-2 mb-4">
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Street</label>
-            {isLoaded ? (
-              <Autocomplete
-                onLoad={ac => setAutocomplete(ac)}
-                onPlaceChanged={() => {
+        </div>
+        {/* Address */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Address</h2>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Street</label>
+              {isLoaded ? (
+                <Autocomplete onLoad={ac => setAutocomplete(ac)} onPlaceChanged={() => {
                   if (!autocomplete) return;
                   const place = autocomplete.getPlace();
                   const components = place && place.address_components ? place.address_components : [];
@@ -407,134 +343,40 @@ function UserProfile() {
                     state,
                     country
                   }));
-                }}
-              >
-                <input
-                  type="text"
-                  name="street"
-                  value={addressFields.street}
-                  onChange={e => {
-                    const value = e.target.value;
-                    setAddressFields(value
-                      ? { ...addressFields, street: value }
-                      : { street: '', city: '', state: '', postalCode: '', country: '' }
-                    );
-                    setFormData(f => ({
-                      ...f,
-                      zip: value ? addressFields.postalCode : '',
-                      city: value ? addressFields.city : '',
-                      state: value ? addressFields.state : '',
-                      country: value ? addressFields.country : ''
-                    }));
-                  }}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                  placeholder="Enter your street address..."
-                />
-              </Autocomplete>
-            ) : (
-              <input
-                type="text"
-                name="street"
-                value={addressFields.street}
-                onChange={e => {
-                  const value = e.target.value;
-                  setAddressFields(value
-                    ? { ...addressFields, street: value }
-                    : { street: '', city: '', state: '', postalCode: '', country: '' }
-                  );
-                  setFormData(f => ({
-                    ...f,
-                    zip: value ? addressFields.postalCode : '',
-                    city: value ? addressFields.city : '',
-                    state: value ? addressFields.state : '',
-                    country: value ? addressFields.country : ''
-                  }));
-                }}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all"
-                placeholder="Enter your street address..."
-              />
-            )}
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-            <input
-              type="text"
-              name="city"
-              value={addressFields.city}
-              onChange={e => setAddressFields({ ...addressFields, city: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">State / Province</label>
-            <input
-              type="text"
-              name="state"
-              value={addressFields.state}
-              onChange={e => setAddressFields({ ...addressFields, state: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">ZIP / Postal Code</label>
-            <input
-              type="text"
-              name="postalCode"
-              value={formData.zip}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-            <input
-              type="text"
-              name="country"
-              value={addressFields.country}
-              onChange={e => setAddressFields({ ...addressFields, country: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          
-          {/* Payment Information */}
-          <div className="col-span-2 mt-4">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">Payment Information</h2>
-          </div>
-          
-          <div className="col-span-2 mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Instructions</label>
-            <textarea
-              name="paymentInstructions"
-              value={formData.paymentInstructions}
-              onChange={handleInputChange}
-              rows="4"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Example: Please make payment to Account #12345678 at Bank XYZ, or via PayPal to example@email.com"
-            ></textarea>
+                }}>
+                  <input type="text" name="street" value={addressFields.street} onChange={e => setAddressFields({ ...addressFields, street: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                </Autocomplete>
+              ) : (
+                <input type="text" name="street" value={addressFields.street} onChange={e => setAddressFields({ ...addressFields, street: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+              <input type="text" name="city" value={addressFields.city} onChange={e => setAddressFields({ ...addressFields, city: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
+              <input type="text" name="state" value={addressFields.state} onChange={e => setAddressFields({ ...addressFields, state: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
+              <input type="text" name="postalCode" value={addressFields.postalCode} onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+              <input type="text" name="country" value={addressFields.country} onChange={e => setAddressFields({ ...addressFields, country: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
           </div>
         </div>
-        
-        <div className="col-span-2 mt-6 flex justify-end">
-          <button
-            type="submit"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 flex items-center"
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Saving...
-              </>
-            ) : (
-              'Save Profile'
-            )}
+        {/* Payment Instructions */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">Payment Instructions</h2>
+          <textarea name="paymentInstructions" value={formData.paymentInstructions} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[80px]" placeholder="e.g. Bank details, payment terms, etc." />
+        </div>
+        {/* Save Button */}
+        <div>
+          <button type="submit" disabled={saving} className="w-full py-3 rounded-lg bg-primary-600 text-white font-semibold text-lg shadow hover:bg-primary-700 transition disabled:opacity-60">
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </form>
