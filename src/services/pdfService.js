@@ -138,8 +138,14 @@ class PdfService {
               stack: [
                 { text: 'BILL TO', style: 'sectionHeader' },
                 { text: client.name || invoice.clientName || '', style: 'clientName', margin: [0, 5, 0, 0] },
-                { text: client.address || '', style: 'clientDetail' },
-                { text: client.city && client.state ? `${client.city}, ${client.state}${client.zipCode ? ` ${client.zipCode}` : ''}` : '', style: 'clientDetail' },
+                (() => {
+                  const addressLines = [];
+                  if (client.street) addressLines.push(client.street);
+                  const cityStateZip = [client.city, client.state, client.postalCode].filter(Boolean).join(', ');
+                  if (cityStateZip) addressLines.push(cityStateZip);
+                  if (client.country) addressLines.push(client.country);
+                  return { text: addressLines.join('\n'), style: 'clientDetail' };
+                })(),
                 { text: client.email || '', style: 'clientDetail' },
                 { text: client.phone || '', style: 'clientDetail' }
               ],
