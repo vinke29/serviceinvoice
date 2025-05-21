@@ -299,6 +299,20 @@ function Clients() {
     if (user) {
       // Find the original client
       const original = clients.find(c => c.id === client.id)
+      
+      // Check for email duplication when email has changed
+      if (original && client.email && original.email !== client.email) {
+        // Look for any client (except the current one) with the same email
+        const duplicateEmail = clients.find(
+          c => c.id !== client.id && c.email.toLowerCase() === client.email.toLowerCase()
+        );
+        
+        if (duplicateEmail) {
+          showToast('error', 'A client with this email already exists.');
+          return;
+        }
+      }
+      
       const normalizedStatus = client.status ? client.status.toLowerCase() : 'active';
       let clientUpdate = { ...client, status: normalizedStatus };
       if (normalizedStatus === 'active') {
@@ -313,6 +327,7 @@ function Clients() {
       }
       await refreshData() // Refresh both clients and invoices after editing client
       await refreshInvoices() // Ensure all invoice consumers are up to date
+      showToast('success', 'Client updated successfully!');
     }
     setEditingClient(null)
     setShowForm(false)
