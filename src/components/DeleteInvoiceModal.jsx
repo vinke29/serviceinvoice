@@ -42,7 +42,7 @@ function DeleteInvoiceModal({
                 onChange={() => setScope('single')}
                 className="mr-2"
               />
-              Delete{' '}<b>just this invoice</b>
+              <span>Delete</span>&nbsp;<b>just this invoice</b>
             </label>
             <label className="flex items-center">
               <input
@@ -53,7 +53,7 @@ function DeleteInvoiceModal({
                 onChange={() => setScope('future')}
                 className="mr-2"
               />
-              Delete{' '}<b>this and {futureInvoicesCount} future scheduled invoice{futureInvoicesCount === 1 ? '' : 's'}</b>
+              <span>Delete</span>&nbsp;<b>this and {futureInvoicesCount} future scheduled invoice{futureInvoicesCount === 1 ? '' : 's'}</b>
             </label>
           </div>
         )}
