@@ -758,3 +758,232 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
     throw new functions.https.HttpsError('internal', error.message || 'Unknown error');
   }
 });
+
+exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, context) => {
+  try {
+    // Check if the user is authenticated
+    if (!context.auth) {
+      console.error('Authentication failed: No auth context');
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send update notifications.');
+    }
+
+    const { userId, invoiceId, clientId, changes } = data;
+    if (!userId || !invoiceId || !clientId) {
+      console.error('Missing parameters:', { userId, invoiceId, clientId });
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
+    }
+
+    console.log('Processing invoice update notification request:', { 
+      userId, 
+      invoiceId, 
+      clientId,
+      changes,
+      authUid: context.auth.uid 
+    });
+
+    // Verify the user exists and has access to the invoice
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found.');
+    }
+
+    // Verify the authenticated user matches the userId
+    if (context.auth.uid !== userId) {
+      throw new functions.https.HttpsError('permission-denied', 'You do not have permission to send notifications for this user.');
+    }
+
+    // Check if invoice exists
+    const invoiceDoc = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
+    if (!invoiceDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    }
+
+    // Get client data
+    const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
+    if (!clientDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'Client not found.');
+    }
+
+    // Initialize the SendGrid client with API key
+    sgMail.setApiKey(functions.config().sendgrid.key);
+    console.log('SendGrid initialized');
+
+    const invoice = invoiceDoc.data();
+    const client = clientDoc.data();
+    const user = userDoc.data();
+
+    console.log('Data loaded successfully for update notification');
+
+    // Construct the email
+    const formatCurrency = (amount) => {
+      if (!amount || isNaN(amount)) return '0.00';
+      return parseFloat(amount).toFixed(2);
+    };
+    
+    const logoHtml = user.logo
+      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+      : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
+          ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
+        </div>`;
+        
+    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
+    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
+    const currency = invoice.currency || '$';
+    
+    const changesHtml = changes && changes.length > 0 ? 
+      `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+        <tr style="background-color: #f2f2f2;">
+          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Change</th>
+          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Previous Value</th>
+          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">New Value</th>
+        </tr>
+        ${changes.split('; ').map(change => {
+          const parts = change.split(' changed from ');
+          if (parts.length === 2) {
+            const [field, valueChange] = parts;
+            const [oldValue, newValue] = valueChange.split(' to ');
+            return `<tr>
+              <td style="padding: 10px; border: 1px solid #ddd;">${field}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${oldValue}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${newValue}</td>
+            </tr>`;
+          }
+          return `<tr><td style="padding: 10px; border: 1px solid #ddd;" colspan="3">${change}</td></tr>`;
+        }).join('')}
+      </table>` : 
+      '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
+    
+    const updateHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice #${invoice.invoiceNumber} Updated</title>
+      </head>
+      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+                <tr>
+                  <td style="background:#3b82f6;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                    <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">INVOICE UPDATED</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:32px 40px 0 40px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="top" width="60" style="padding-right:20px;">
+                          ${logoHtml}
+                        </td>
+                        <td valign="top">
+                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
+                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:24px 40px 0 40px;">
+                    <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
+                    <p style="font-size:15px;color:#333;">This is to inform you that your invoice #${invoice.invoiceNumber} has been updated.</p>
+                    
+                    <h3 style="font-size:16px;color:#333;margin-top:20px;">What has changed:</h3>
+                    ${changesHtml}
+                    
+                    <h3 style="font-size:16px;color:#333;margin-top:20px;">Updated Invoice Summary:</h3>
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
+                      <tr style="background-color: #f2f2f2;">
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th>
+                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
+                      </tr>
+                    </table>
+                    
+                    <p style="font-size:15px;color:#333;">A revised copy of your invoice has been attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
+                    <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+    
+    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const fromName = `${user.name || senderName} via BillieNow`;
+    const msg = {
+      to: client.email,
+      from: {
+        email: VERIFIED_SENDER,
+        name: fromName
+      },
+      replyTo: user.email,
+      subject: `Invoice #${invoice.invoiceNumber} Updated`,
+      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nRegards,\n${senderName}`,
+      html: updateHtml
+    };
+
+    try {
+      await sgMail.send(msg);
+      // Log update notification activity
+      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'update_notification_sent',
+          stage: 'Update Notification Sent',
+          date: new Date().toISOString()
+        })
+      });
+      return { success: true, message: 'Update notification sent successfully' };
+    } catch (error) {
+      console.error('Error sending update notification:', error);
+      
+      // Log detailed error information
+      if (error.response && error.response.body) {
+        console.log('SendGrid error details:', error.response.body);
+      }
+      
+      // Check if this is a SendGrid credits exceeded error
+      if (error.code === 401 && 
+          error.response && 
+          error.response.body && 
+          error.response.body.errors && 
+          error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
+        throw new functions.https.HttpsError(
+          'resource-exhausted', 
+          'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
+        );
+      }
+      
+      // For general SendGrid authentication errors
+      if (error.code === 401) {
+        throw new functions.https.HttpsError(
+          'unauthenticated', 
+          'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
+        );
+      }
+      
+      throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Function error:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
+  }
+});

@@ -27,6 +27,7 @@ import ActiveInvoiceUpdateModal from './ActiveInvoiceUpdateModal';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
+const sendInvoiceUpdateNotification = httpsCallable(functions, 'sendInvoiceUpdateNotification');
 console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
 console.log("sendInvoiceEscalation is defined:", typeof sendInvoiceEscalation);
 
@@ -1492,8 +1493,33 @@ function Invoices() {
       
       // If notification is requested, call Firebase Function to send email
       if (options.notifyClient && client) {
-        // TODO: Call the Firebase function to send the notification email
-        showToast('info', 'Sending notification email to client...');
+        // Call the Firebase function to send the notification email
+        try {
+          showToast('info', 'Sending notification email to client...', { autoClose: false, toastId: 'sending-update-notification' });
+          
+          // Call the update notification function
+          const result = await sendInvoiceUpdateNotification({
+            userId: user.uid,
+            invoiceId: invoiceWithActivity.id,
+            clientId: client.id,
+            changes: changes.join('; ')
+          });
+          
+          console.log("sendInvoiceUpdateNotification result:", result);
+          toast.dismiss('sending-update-notification');
+          showToast('success', 'Update notification sent successfully!');
+        } catch (error) {
+          toast.dismiss('sending-update-notification');
+          console.error('Error sending update notification:', error);
+          
+          if (error.code === "functions/resource-exhausted") {
+            showToast('error', 'Email sending limit reached. Please upgrade your SendGrid plan or try again later.');
+          } else if (error.code === "functions/unauthenticated") {
+            showToast('error', 'Authentication failed. Please log out and log back in.');
+          } else {
+            showToast('error', `Failed to send notification: ${error.message || "Unknown error"}`);
+          }
+        }
       }
       
       setShowForm(false);
