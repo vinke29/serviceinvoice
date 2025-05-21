@@ -1318,13 +1318,24 @@ function Invoices() {
     
     // Check if this is an active invoice (status is 'pending' or 'overdue')
     if ((updatedInvoice.status === 'pending' || updatedInvoice.status === 'overdue') && !updatedInvoice._bulkUpdate) {
-      // Find the original invoice to compare changes
+      // Find the original invoice to compare changes - use the latest version from state
       const originalInvoice = invoices.find(inv => inv.id === updatedInvoice.id);
       if (!originalInvoice) return;
       
+      // Force refreshing invoices to ensure we have the latest data
+      let latestInvoices = invoices;
+      try {
+        if (initialLoad) {
+          // Only fetch from Firebase if we might have stale data
+          latestInvoices = await getInvoices(user.uid);
+          setInvoices(latestInvoices);
+        }
+      } catch (error) {
+        console.error("Error refreshing invoices:", error);
+      }
+      
       // Check if we have future invoices for this client with same description (recurring series)
-      const allInvoices = await getInvoices(user.uid);
-      const futureInvoices = allInvoices.filter(inv =>
+      const futureInvoices = latestInvoices.filter(inv =>
         inv.clientId === updatedInvoice.clientId &&
         inv.status === 'scheduled' &&
         inv.description === updatedInvoice.description &&
@@ -1332,14 +1343,19 @@ function Invoices() {
         inv.id !== updatedInvoice.id
       );
       
-      // Set data for the active invoice update modal
-      setActiveInvoiceUpdateData({
-        updatedInvoice,
-        originalInvoice,
-        futureInvoices,
-        client: clients.find(c => c.id === updatedInvoice.clientId)
-      });
-      setShowActiveInvoiceUpdateModal(true);
+      // Always reset active invoice update data before setting new data
+      setActiveInvoiceUpdateData(null);
+      
+      // Set data for the active invoice update modal with a short delay to ensure state resets
+      setTimeout(() => {
+        setActiveInvoiceUpdateData({
+          updatedInvoice,
+          originalInvoice,
+          futureInvoices,
+          client: clients.find(c => c.id === updatedInvoice.clientId)
+        });
+        setShowActiveInvoiceUpdateModal(true);
+      }, 50);
       return;
     }
     
@@ -1475,6 +1491,7 @@ function Invoices() {
           await updateInvoice(user.uid, inv);
         }
         
+        // Update the local state with all changes
         setInvoices(prev => prev.map(inv => {
           if (inv.id === invoiceWithActivity.id) return invoiceWithActivity;
           const updated = updates.find(u => u.id === inv.id);
@@ -1522,6 +1539,16 @@ function Invoices() {
         }
       }
       
+      // Refresh invoices from the server to ensure we have the latest data
+      setTimeout(async () => {
+        try {
+          const latestInvoices = await getInvoices(user.uid);
+          setInvoices(latestInvoices);
+        } catch (error) {
+          console.error('Error refreshing invoices after update:', error);
+        }
+      }, 500);
+      
       setShowForm(false);
       setEditingInvoice(null);
     } catch (error) {
@@ -1529,7 +1556,10 @@ function Invoices() {
       console.error('Active invoice update error:', error);
     }
     
-    setActiveInvoiceUpdateData(null);
+    // Clear the active invoice update data after a short delay to ensure clean state
+    setTimeout(() => {
+      setActiveInvoiceUpdateData(null);
+    }, 100);
   };
 
   // Add handler to send escalation email
