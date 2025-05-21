@@ -5,7 +5,7 @@ import ClientForm from './ClientForm'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Checkbox from '@radix-ui/react-checkbox';
 import * as Popover from '@radix-ui/react-popover';
-import { CheckIcon, ChevronDownIcon, CalendarIcon, Pencil2Icon } from '@radix-ui/react-icons';
+import { CheckIcon, ChevronDownIcon, CalendarIcon, Pencil2Icon, EyeOpenIcon, TrashIcon } from '@radix-ui/react-icons';
 import { format, isValid, parseISO } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
@@ -236,6 +236,8 @@ function Clients() {
   const { refreshInvoices } = useInvoices();
   // Add state for duplicate modal
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+  const [mobileActionClient, setMobileActionClient] = useState(null);
 
   // Load clients and invoices from Firestore on mount
   useEffect(() => {
@@ -435,6 +437,26 @@ function Clients() {
       return '-';
     }
   };
+
+  // Mobile tile renderer
+  const renderMobileTile = (client) => (
+    <div
+      key={client.id}
+      className="md:hidden bg-white rounded-xl shadow-soft mb-4 px-4 py-3 flex items-center justify-between cursor-pointer"
+      onClick={() => { setMobileActionClient(client); setShowMobileActions(true); }}
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-lg font-bold text-primary-700">
+          {client.name[0]}
+        </div>
+        <div>
+          <div className="font-semibold text-secondary-900 text-base">{client.name}</div>
+          <div className="text-xs text-secondary-500">{client.email}</div>
+        </div>
+      </div>
+      <ChevronDownIcon className="w-5 h-5 text-secondary-300" />
+    </div>
+  );
 
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading clients...</div>
@@ -702,7 +724,13 @@ function Clients() {
         />
       </div>
 
-      <div className="bg-white rounded-2xl shadow-soft p-6">
+      {/* Mobile Client Tiles */}
+      <div className="md:hidden">
+        {filteredClients.map(renderMobileTile)}
+      </div>
+
+      {/* Desktop Table (unchanged) */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-soft p-6">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -801,6 +829,37 @@ function Clients() {
         </div>
       </div>
 
+      {/* Mobile Actions Modal */}
+      {showMobileActions && mobileActionClient && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40" onClick={() => setShowMobileActions(false)}>
+          <div className="bg-white rounded-t-2xl shadow-xl w-full max-w-md mx-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="text-lg font-bold mb-4">Actions</div>
+            <button className="w-full py-3 mb-2 rounded-lg bg-primary-50 text-primary-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowMobileActions(false); setSelectedClient(mobileActionClient); }}>
+              <EyeOpenIcon className="w-5 h-5" /> View Details
+            </button>
+            <button className="w-full py-3 mb-2 rounded-lg bg-blue-50 text-blue-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowMobileActions(false); setEditingClient(mobileActionClient); setShowForm(true); }}>
+              <Pencil2Icon className="w-5 h-5" /> Edit
+            </button>
+            <button className="w-full py-3 mb-2 rounded-lg bg-red-50 text-red-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowMobileActions(false); setClientToDelete(mobileActionClient); setShowDeleteModal(true); }}>
+              <TrashIcon className="w-5 h-5" /> Delete
+            </button>
+            <button className="w-full py-3 mt-2 rounded-lg bg-secondary-100 text-secondary-700 font-semibold text-base" onClick={() => setShowMobileActions(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Client Details Drawer */}
+      <ClientDetailsDrawer
+        isOpen={!!selectedClient}
+        onClose={() => setSelectedClient(null)}
+        client={selectedClient}
+        invoices={invoices}
+        onUpdate={async updatedClient => {
+          await refreshData();
+          setSelectedClient(updatedClient);
+        }}
+      />
+
       {/* Add/Edit Client Drawer */}
       <Drawer
         isOpen={showForm}
@@ -820,18 +879,7 @@ function Clients() {
         />
       </Drawer>
 
-      {/* Client History Drawer */}
-      <ClientDetailsDrawer
-        isOpen={showHistory}
-        onClose={() => {
-          setShowHistory(false)
-          setSelectedClient(null)
-        }}
-        client={selectedClient}
-        invoices={invoices}
-        onUpdate={handleEditClient}
-      />
-
+      {/* Delete Client Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
