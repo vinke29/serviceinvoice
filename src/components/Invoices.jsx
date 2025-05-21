@@ -21,6 +21,7 @@ import { toast } from 'react-hot-toast';
 import { useInvoices } from './InvoicesContext';
 import { exportToCSV } from '../utils/csvExport';
 import MobileInvoiceTile from './MobileInvoiceTile';
+import { Pencil2Icon } from '@radix-ui/react-icons';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -1831,9 +1832,7 @@ function Invoices() {
                         aria-label="Edit"
                       >
                         {/* Edit icon */}
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <Pencil2Icon className="w-5 h-5" />
                       </button>
                       {/* Delete */}
                       <button
@@ -2037,9 +2036,7 @@ function Invoices() {
                               className="p-2 text-secondary-600 hover:text-primary-600 transition-colors duration-200"
                               title="Edit"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
+                              <Pencil2Icon className="w-5 h-5" />
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(invoice); }}
