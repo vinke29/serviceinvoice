@@ -115,30 +115,28 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
-            <input
-              type="text"
-              value={formData.firstName}
-              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              required
-              placeholder="John"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
-            <input
-              type="text"
-              value={formData.lastName}
-              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              required
-              placeholder="Smith"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-1 sm:px-0">
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
+          <input
+            type="text"
+            value={formData.firstName}
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            required
+            placeholder="John"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
+          <input
+            type="text"
+            value={formData.lastName}
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            required
+            placeholder="Smith"
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
@@ -146,7 +144,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
             required
           />
         </div>
@@ -156,7 +154,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
             country={'us'}
             value={formData.phone}
             onChange={phone => setFormData({ ...formData, phone })}
-            inputClass="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            inputClass="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
             containerClass="w-full"
           />
         </div>
@@ -168,7 +166,6 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
               onPlaceChanged={() => {
                 if (!autocomplete) return;
                 const place = autocomplete.getPlace();
-                console.log('Google Autocomplete place object:', place);
                 const components = place && place.address_components ? place.address_components : [];
                 if (!components.length) {
                   alert('Could not extract address components from the selected place. Please try again or enter manually.');
@@ -198,87 +195,98 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
                   postalCode: '',
                   country: ''
                 })}
-                className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                required
+                className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
                 placeholder="Start typing address..."
-                ref={autocompleteRef}
               />
             </Autocomplete>
           ) : (
             <input
               type="text"
               value={addressFields.street}
-              onChange={e => setAddressFields({
-                street: e.target.value,
-                city: '',
-                state: '',
-                postalCode: '',
-                country: ''
-              })}
-              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              required
-              placeholder="Street address"
+              onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              placeholder="Start typing address..."
             />
           )}
-          <div className="grid grid-cols-2 gap-4 mt-2">
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
-              <input type="text" value={addressFields.city} onChange={e => setAddressFields({ ...addressFields, city: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
-              <input type="text" value={addressFields.state} onChange={e => setAddressFields({ ...addressFields, state: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
-              <input type="text" value={addressFields.postalCode} onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
-              <input type="text" value={addressFields.country} onChange={e => setAddressFields({ ...addressFields, country: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
-            </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+            <input
+              type="text"
+              value={addressFields.city}
+              onChange={e => setAddressFields({ ...addressFields, city: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              placeholder="City"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
+            <input
+              type="text"
+              value={addressFields.state}
+              onChange={e => setAddressFields({ ...addressFields, state: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              placeholder="State"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
+            <input
+              type="text"
+              value={addressFields.postalCode}
+              onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              placeholder="Postal Code"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+            <input
+              type="text"
+              value={addressFields.country}
+              onChange={e => setAddressFields({ ...addressFields, country: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              placeholder="Country"
+            />
           </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Customer Since</label>
           <input
             type="date"
-            value={formData.customerSince || ''}
-            readOnly
-            disabled
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg bg-gray-50 text-secondary-500"
+            value={formData.customerSince}
+            onChange={e => setFormData({ ...formData, customerSince: e.target.value })}
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            required
           />
-          <div className="text-xs text-secondary-500 mt-1">Set automatically when the client is created.</div>
+          <span className="block text-xs text-secondary-500 mt-1">Set automatically when the client is created.</span>
         </div>
-        
         <div>
           <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
           <select
             value={formData.status}
             onChange={e => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            required
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
           >
-            <option value="">Select status</option>
             <option value="active">Active</option>
             <option value="on_hold">On Hold</option>
             <option value="cancelled">Cancelled</option>
-            <option value="delinquent">Delinquent</option>
           </select>
         </div>
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="sticky bottom-0 bg-white pt-2 pb-1 flex gap-2 z-10">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
+            className="flex-1 px-4 py-3 text-secondary-700 bg-secondary-100 rounded-xl font-medium text-base"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+            className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl font-bold text-base shadow hover:bg-primary-700 transition"
           >
-            {client ? 'Update Client' : 'Add Client'}
+            {isNewClient ? 'Add Client' : 'Update Client'}
           </button>
         </div>
       </form>

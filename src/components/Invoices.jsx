@@ -220,13 +220,13 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-1 sm:px-0">
       <div>
         <label className="block text-sm font-medium text-secondary-700 mb-1">Client</label>
         <select
           value={formData.clientId}
           onChange={handleClientChange}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white text-base"
           required
         >
           <option value="">Select a client</option>
@@ -246,46 +246,46 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           </p>
         )}
       </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Amount</label>
-          <div className="relative">
-            <span className="absolute left-4 top-2 text-secondary-500">$</span>
-            <input
-              type="number"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full pl-8 pr-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              required
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Billing Frequency</label>
-          <select
-            value={formData.billingFrequency}
-            onChange={handleFrequencyChange}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="one-time">One-Time Charge</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="biannually">Bi-annually</option>
-            <option value="annually">Annually</option>
-          </select>
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">Amount</label>
+        <div className="relative">
+          <span className="absolute left-4 top-3 text-secondary-500 text-base">$</span>
+          <input
+            type="number"
+            value={formData.amount}
+            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+            className="w-full pl-8 pr-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            required
+            placeholder="0.00"
+            min="0"
+            step="0.01"
+          />
         </div>
       </div>
-      
+      <div>
+        <label className="block text-sm font-medium text-secondary-700 mb-1">Billing Frequency</label>
+        <select
+          value={formData.billingFrequency}
+          onChange={handleFrequencyChange}
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white text-base"
+        >
+          <option value="one-time">One-Time Charge</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="biannually">Bi-annually</option>
+          <option value="annually">Annually</option>
+        </select>
+      </div>
       <div>
         <label className="block text-sm font-medium text-secondary-700 mb-1">Description</label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
           rows="3"
           required
+          placeholder="Describe the invoice..."
         />
       </div>
       <div>
@@ -294,13 +294,13 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           type="date"
           value={formData.date}
           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
           required
         />
       </div>
       <div>
         <label className="block text-sm font-medium text-secondary-700 mb-1">
-          Due Date 
+          Due Date
           {agentConfig && (
             <span className="text-xs text-secondary-500 ml-2">
               (Net {agentConfig.netDays === 0 ? 'Due immediately' : `${agentConfig.netDays} days`})
@@ -311,7 +311,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           type="date"
           value={formData.dueDate}
           onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
           required
         />
       </div>
@@ -327,9 +327,9 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         <select
           value={formData.status}
           onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-          className={`w-full px-4 py-2 border rounded-lg ${
-            isFutureInvoice 
-              ? 'border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-300 focus:border-purple-300 text-purple-700' 
+          className={`w-full px-4 py-3 border rounded-xl text-base bg-white ${
+            isFutureInvoice
+              ? 'border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-300 focus:border-purple-300 text-purple-700'
               : 'border-secondary-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
           }`}
           disabled={isFutureInvoice}
@@ -346,23 +346,23 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           </p>
         )}
       </div>
-      <div className="flex justify-end space-x-3 pt-4">
+      <div className="sticky bottom-0 bg-white pt-2 pb-1 flex gap-2 z-10">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
+          className="flex-1 px-4 py-3 text-secondary-700 bg-secondary-100 rounded-xl font-medium text-base"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+          className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl font-bold text-base shadow hover:bg-primary-700 transition"
         >
           {invoice ? 'Update Invoice' : 'Create Invoice'}
         </button>
       </div>
     </form>
-  )
+  );
 }
 
 // Modern Filter Bar Components (copied from Clients.jsx)
