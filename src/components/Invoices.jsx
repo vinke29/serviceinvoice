@@ -136,6 +136,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
   })
   const [agentConfig, setAgentConfig] = useState(null)
   const [isFutureInvoice, setIsFutureInvoice] = useState(false)
+  const [isCustomDueDate, setIsCustomDueDate] = useState(false);
 
   // Load agent config on mount
   useEffect(() => {
@@ -166,6 +167,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         dueDate = addDays(invoiceDate, agentConfig.netDays);
       }
       setFormData(prev => ({ ...prev, dueDate: dueDate.toISOString().slice(0, 10) }))
+      setIsCustomDueDate(false); // Reset custom flag when auto-calculating
     }
   }, [formData.date, agentConfig])
   
@@ -303,14 +305,19 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           Due Date
           {agentConfig && (
             <span className="text-xs text-secondary-500 ml-2">
-              (Net {agentConfig.netDays === 0 ? 'Due immediately' : `${agentConfig.netDays} days`})
+              {isCustomDueDate
+                ? '(Custom due date)'
+                : `(Net ${agentConfig.netDays === 0 ? 'Due immediately' : `${agentConfig.netDays} days`})`}
             </span>
           )}
         </label>
         <input
           type="date"
           value={formData.dueDate}
-          onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, dueDate: e.target.value });
+            setIsCustomDueDate(true);
+          }}
           className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
           required
         />
