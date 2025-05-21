@@ -22,6 +22,7 @@ import { useInvoices } from './InvoicesContext';
 import { exportToCSV } from '../utils/csvExport';
 import MobileInvoiceTile from './MobileInvoiceTile';
 import { Pencil2Icon } from '@radix-ui/react-icons';
+import UpdateScheduledInvoicesModal from './UpdateScheduledInvoicesModal';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -153,9 +154,37 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
 
   useEffect(() => {
     if (invoice) {
-      setFormData(invoice)
+      console.log('FORM RECEIVING INVOICE:', invoice);
+      
+      // Make a clean copy of the data for the form
+      const cleanFormData = {
+        ...formData,  // Keep default values
+        ...invoice,   // Override with invoice values
+        
+        // Explicitly set critical fields
+        clientId: invoice.clientId || '',
+        clientName: invoice.clientName || '',
+        amount: invoice.amount || '',
+        description: invoice.description || '',
+        
+        // Critical fields that need special handling
+        billingFrequency: invoice.billingFrequency || (invoice.type === 'Recurring' ? 'monthly' : 'one-time'),
+        
+        // Date handling - ensure it's a string in YYYY-MM-DD format
+        date: invoice.scheduledDate || 
+              (typeof invoice.date === 'string' ? invoice.date : 
+              invoice.date instanceof Date ? invoice.date.toISOString().split('T')[0] : localDateString),
+        
+        // Copy other fields as is
+        dueDate: invoice.dueDate || '',
+        status: invoice.status || 'pending',
+        isRecurring: invoice.isRecurring || invoice.type === 'Recurring' || false
+      };
+      
+      console.log('SETTING CLEAN FORM DATA:', cleanFormData);
+      setFormData(cleanFormData);
     }
-  }, [invoice])
+  }, [invoice, localDateString]);
 
   // Calculate due date when invoice date or client changes
   useEffect(() => {
@@ -556,6 +585,9 @@ function Invoices() {
   const [actionInvoice, setActionInvoice] = useState(null);
   const [showScheduledMobile, setShowScheduledMobile] = useState(false);
   const modalContentRef = useRef(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [pendingUpdateData, setPendingUpdateData] = useState(null);
+  const [futureScheduledCount, setFutureScheduledCount] = useState(0);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -994,10 +1026,33 @@ function Invoices() {
 
   // Edit invoice
   const handleEditInvoice = async (invoice) => {
-    // Open the invoice form pre-filled with invoice data
-    setEditingInvoice({ ...invoice, isScheduled: true });
-    setShowForm(true);
-  }
+    // Log the full invoice object to see all fields
+    console.log('FULL INVOICE OBJECT:', invoice);
+    
+    // For scheduled/recurring invoices, create a completely new object with the right fields
+    if (invoice.status === 'scheduled' || invoice.type === 'Recurring') {
+      // Create a fresh invoice object with only the fields we care about
+      const enhancedInvoice = {
+        ...invoice,
+        // Force the date to be the scheduled date as a string (not a Date object)
+        date: invoice.scheduledDate || (typeof invoice.date === 'string' ? invoice.date : 
+              invoice.date instanceof Date ? invoice.date.toISOString().split('T')[0] : ''),
+        // Set the billing frequency based on the type column
+        billingFrequency: 'monthly',  // Default for recurring invoices
+        isRecurring: true
+      };
+      
+      console.log('ENHANCED INVOICE BEFORE EDIT:', enhancedInvoice);
+      
+      // Open form with enhanced data
+      setEditingInvoice(enhancedInvoice);
+      setShowForm(true);
+    } else {
+      // Regular invoice handling
+      setEditingInvoice(invoice);
+      setShowForm(true);
+    }
+  };
 
   // Delete invoice
   const handleDeleteInvoice = async (invoice) => {
@@ -1256,6 +1311,23 @@ function Invoices() {
   const handleUpdateInvoice = async (updatedInvoice) => {
     const user = auth.currentUser;
     if (!user) return;
+    // Only intercept if this is a scheduled invoice and not a bulk update
+    if (updatedInvoice.status === 'scheduled' && !updatedInvoice._bulkUpdate) {
+      // Find all future scheduled invoices for the same client AND same service (description)
+      const allInvoices = await getInvoices(user.uid);
+      const futureInvoices = allInvoices.filter(inv =>
+        inv.clientId === updatedInvoice.clientId &&
+        inv.status === 'scheduled' &&
+        inv.description === updatedInvoice.description && // Only update invoices with the same description
+        new Date(inv.date) >= new Date(updatedInvoice.date) &&
+        inv.id !== updatedInvoice.id
+      );
+      setPendingUpdateData({ updatedInvoice, futureInvoices });
+      setFutureScheduledCount(futureInvoices.length);
+      setShowUpdateModal(true);
+      return;
+    }
+    // Normal update for single invoice
     try {
       await updateInvoice(user.uid, updatedInvoice);
       setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
@@ -1266,6 +1338,47 @@ function Invoices() {
       showToast('error', 'Failed to update invoice.');
       console.error('Update invoice error:', error);
     }
+  };
+
+  // Handler for modal confirmation
+  const handleUpdateModalConfirm = async (scope) => {
+    setShowUpdateModal(false);
+    if (!pendingUpdateData) return;
+    const { updatedInvoice, futureInvoices } = pendingUpdateData;
+    const user = auth.currentUser;
+    if (!user) return;
+    if (scope === 'single') {
+      // Update only the selected invoice
+      await handleUpdateInvoice({ ...updatedInvoice, _bulkUpdate: true });
+    } else {
+      // Update all future scheduled invoices of the same type (including the selected one)
+      const updates = [updatedInvoice, ...futureInvoices].map(inv => ({
+        ...inv,
+        amount: updatedInvoice.amount,
+        date: inv.id === updatedInvoice.id ? updatedInvoice.date : inv.date, // Only update date for the edited invoice
+        billingFrequency: updatedInvoice.billingFrequency, // Propagate billing frequency changes
+        activity: [
+          ...(inv.activity || []),
+          {
+            type: 'updated',
+            date: new Date().toISOString(),
+            stage: 'Amount/date updated via bulk edit'
+          }
+        ],
+        _bulkUpdate: true
+      }));
+      for (const inv of updates) {
+        await updateInvoice(user.uid, inv);
+      }
+      setInvoices(prev => prev.map(inv => {
+        const updated = updates.find(u => u.id === inv.id);
+        return updated ? updated : inv;
+      }));
+      setShowForm(false);
+      setEditingInvoice(null);
+      setSuccessMessage(`Updated ${updates.length} scheduled invoices for this service.`);
+    }
+    setPendingUpdateData(null);
   };
 
   // Add handler to send escalation email
@@ -2118,6 +2231,15 @@ function Invoices() {
           </div>
         </div>
       )}
+
+      <UpdateScheduledInvoicesModal
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+        onConfirm={handleUpdateModalConfirm}
+        futureCount={futureScheduledCount}
+        invoiceAmount={pendingUpdateData?.updatedInvoice?.amount}
+        invoiceDate={pendingUpdateData?.updatedInvoice?.date}
+      />
     </div>
   )
 }
