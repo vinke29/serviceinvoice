@@ -547,6 +547,7 @@ function Invoices() {
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionInvoice, setActionInvoice] = useState(null);
   const [showScheduledMobile, setShowScheduledMobile] = useState(false);
+  const modalContentRef = useRef(null);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1315,6 +1316,13 @@ function Invoices() {
     }
   }, [location.search]);
 
+  // Move this useEffect to the top level (if not already):
+  useEffect(() => {
+    if (showForm && modalContentRef.current) {
+      modalContentRef.current.scrollTop = 0;
+    }
+  }, [showForm]);
+
   if (loading) {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
@@ -1394,14 +1402,25 @@ function Invoices() {
         {/* InvoiceForm Modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={() => { setShowForm(false); setEditingInvoice(null); }}>
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto p-6 relative" onClick={e => e.stopPropagation()}>
-              <button className="absolute top-2 right-2 text-secondary-400 hover:text-secondary-700 text-2xl" onClick={() => { setShowForm(false); setEditingInvoice(null); }} aria-label="Close">&times;</button>
-              <InvoiceForm
-                invoice={editingInvoice}
-                onSubmit={handleAddInvoice}
-                onCancel={() => { setShowForm(false); setEditingInvoice(null); }}
-                clients={clients}
-              />
+            <div
+              className="bg-white rounded-none shadow-xl w-full h-full max-w-none max-h-none m-0 p-0 relative flex flex-col"
+              onClick={e => e.stopPropagation()}
+              ref={modalContentRef} // <-- ensure this is here
+              style={{ height: '100%', width: '100%', overflowY: 'auto' }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-secondary-100">
+                <h2 className="text-xl font-bold text-secondary-900">{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</h2>
+                <button className="text-secondary-400 hover:text-secondary-700 text-2xl" onClick={() => { setShowForm(false); setEditingInvoice(null); }} aria-label="Close">&times;</button>
+              </div>
+              <div className="p-6 pt-2 flex-1 overflow-y-auto">
+                <InvoiceForm
+                  invoice={editingInvoice}
+                  onSubmit={handleAddInvoice}
+                  onCancel={() => { setShowForm(false); setEditingInvoice(null); }}
+                  clients={clients}
+                />
+              </div>
             </div>
           </div>
         )}
