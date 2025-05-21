@@ -546,6 +546,7 @@ function Invoices() {
   const [showFilters, setShowFilters] = useState(false);
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionInvoice, setActionInvoice] = useState(null);
+  const [showScheduledMobile, setShowScheduledMobile] = useState(false);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1312,8 +1313,6 @@ function Invoices() {
     // Separate scheduled and regular invoices
     const regularInvoices = invoices.filter(inv => !inv.deleted && inv.status !== 'scheduled');
     const scheduledInvoices = invoices.filter(inv => !inv.deleted && inv.status === 'scheduled');
-    // Collapsed state for scheduled invoices on mobile
-    const [showScheduledMobile, setShowScheduledMobile] = useState(false);
     return (
       <div className="p-2 pb-24">
         <div className="sticky top-0 z-10 bg-white pb-2">
