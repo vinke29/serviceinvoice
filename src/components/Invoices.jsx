@@ -592,6 +592,7 @@ function Invoices() {
   const [futureScheduledCount, setFutureScheduledCount] = useState(0);
   const [showActiveInvoiceUpdateModal, setShowActiveInvoiceUpdateModal] = useState(false);
   const [activeInvoiceUpdateData, setActiveInvoiceUpdateData] = useState(null);
+  const modalKeyRef = useRef(0);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1049,11 +1050,11 @@ function Invoices() {
       console.log('ENHANCED INVOICE BEFORE EDIT:', enhancedInvoice);
       
       // Open form with enhanced data
-      setEditingInvoice(enhancedInvoice);
+      setEditingInvoice({ ...enhancedInvoice }); // clone to force new reference
       setShowForm(true);
     } else {
       // Regular invoice handling
-      setEditingInvoice(invoice);
+      setEditingInvoice({ ...invoice }); // clone to force new reference
       setShowForm(true);
     }
   };
@@ -1313,13 +1314,21 @@ function Invoices() {
 
   // Add this function in the Invoices component:
   const handleUpdateInvoice = async (updatedInvoice) => {
+    console.log('handleUpdateInvoice called', updatedInvoice);
     const user = auth.currentUser;
     if (!user) return;
     
+    // CRITICAL FIX: Always remove the _bulkUpdate flag that might have been added in a previous update
+    // This ensures the modal always shows, even for repeated updates to the same invoice
+    const cleanedInvoice = { ...updatedInvoice };
+    delete cleanedInvoice._bulkUpdate;
+    console.log('Invoice cleaned of _bulkUpdate flag:', cleanedInvoice);
+    
     // Check if this is an active invoice (status is 'pending' or 'overdue')
-    if ((updatedInvoice.status === 'pending' || updatedInvoice.status === 'overdue') && !updatedInvoice._bulkUpdate) {
+    if (cleanedInvoice.status === 'pending' || cleanedInvoice.status === 'overdue') {
+      console.log('Displaying active invoice update modal');
       // Find the original invoice to compare changes - use the latest version from state
-      const originalInvoice = invoices.find(inv => inv.id === updatedInvoice.id);
+      const originalInvoice = invoices.find(inv => inv.id === cleanedInvoice.id);
       if (!originalInvoice) return;
       
       // Force refreshing invoices to ensure we have the latest data
@@ -1336,41 +1345,45 @@ function Invoices() {
       
       // Check if we have future invoices for this client with same description (recurring series)
       const futureInvoices = latestInvoices.filter(inv =>
-        inv.clientId === updatedInvoice.clientId &&
+        inv.clientId === cleanedInvoice.clientId &&
         inv.status === 'scheduled' &&
-        inv.description === updatedInvoice.description &&
+        inv.description === cleanedInvoice.description &&
         new Date(inv.date) > new Date() &&
-        inv.id !== updatedInvoice.id
+        inv.id !== cleanedInvoice.id
       );
       
-      // Always reset active invoice update data before setting new data
+      // Always reset modal state before setting new data
+      setShowActiveInvoiceUpdateModal(false);
       setActiveInvoiceUpdateData(null);
       
-      // Set data for the active invoice update modal with a short delay to ensure state resets
+      modalKeyRef.current += 1; // increment for uniqueness
+      
       setTimeout(() => {
         setActiveInvoiceUpdateData({
-          updatedInvoice,
+          updatedInvoice: cleanedInvoice,
           originalInvoice,
           futureInvoices,
-          client: clients.find(c => c.id === updatedInvoice.clientId)
+          client: clients.find(c => c.id === cleanedInvoice.clientId),
+          modalKey: modalKeyRef.current // always unique
         });
         setShowActiveInvoiceUpdateModal(true);
-      }, 50);
+      }, 0); // 0ms is enough, React will batch the state updates
+      
       return;
     }
     
     // Only intercept if this is a scheduled invoice and not a bulk update
-    if (updatedInvoice.status === 'scheduled' && !updatedInvoice._bulkUpdate) {
+    if (cleanedInvoice.status === 'scheduled') {
       // Find all future scheduled invoices for the same client AND same service (description)
       const allInvoices = await getInvoices(user.uid);
       const futureInvoices = allInvoices.filter(inv =>
-        inv.clientId === updatedInvoice.clientId &&
+        inv.clientId === cleanedInvoice.clientId &&
         inv.status === 'scheduled' &&
-        inv.description === updatedInvoice.description && // Only update invoices with the same description
-        new Date(inv.date) >= new Date(updatedInvoice.date) &&
-        inv.id !== updatedInvoice.id
+        inv.description === cleanedInvoice.description && // Only update invoices with the same description
+        new Date(inv.date) >= new Date(cleanedInvoice.date) &&
+        inv.id !== cleanedInvoice.id
       );
-      setPendingUpdateData({ updatedInvoice, futureInvoices });
+      setPendingUpdateData({ updatedInvoice: cleanedInvoice, futureInvoices });
       setFutureScheduledCount(futureInvoices.length);
       setShowUpdateModal(true);
       return;
@@ -1378,11 +1391,11 @@ function Invoices() {
     
     // Normal update for single invoice
     try {
-      await updateInvoice(user.uid, updatedInvoice);
-      setInvoices(prev => prev.map(inv => inv.id === updatedInvoice.id ? updatedInvoice : inv));
+      await updateInvoice(user.uid, cleanedInvoice);
+      setInvoices(prev => prev.map(inv => inv.id === cleanedInvoice.id ? cleanedInvoice : inv));
       setShowForm(false);
       setEditingInvoice(null);
-      setSuccessMessage(`Invoice #${updatedInvoice.invoiceNumber} updated successfully.`);
+      setSuccessMessage(`Invoice #${cleanedInvoice.invoiceNumber} updated successfully.`);
     } catch (error) {
       showToast('error', 'Failed to update invoice.');
       console.error('Update invoice error:', error);
@@ -1398,24 +1411,35 @@ function Invoices() {
     if (!user) return;
     if (scope === 'single') {
       // Update only the selected invoice
-      await handleUpdateInvoice({ ...updatedInvoice, _bulkUpdate: true });
+      // Make a clean copy without the _bulkUpdate flag
+      const cleanInvoice = { ...updatedInvoice };
+      // Safely remove the _bulkUpdate flag
+      delete cleanInvoice._bulkUpdate;
+      console.log('Cleaned invoice for single update:', cleanInvoice);
+      await handleUpdateInvoice(cleanInvoice);
     } else {
       // Update all future scheduled invoices of the same type (including the selected one)
-      const updates = [updatedInvoice, ...futureInvoices].map(inv => ({
-        ...inv,
-        amount: updatedInvoice.amount,
-        date: inv.id === updatedInvoice.id ? updatedInvoice.date : inv.date, // Only update date for the edited invoice
-        billingFrequency: updatedInvoice.billingFrequency, // Propagate billing frequency changes
-        activity: [
-          ...(inv.activity || []),
-          {
-            type: 'updated',
-            date: new Date().toISOString(),
-            stage: 'Amount/date updated via bulk edit'
-          }
-        ],
-        _bulkUpdate: true
-      }));
+      const updates = [updatedInvoice, ...futureInvoices].map(inv => {
+        // Create a clean invoice without _bulkUpdate flag
+        const cleanInv = { ...inv };
+        delete cleanInv._bulkUpdate;
+        
+        return {
+          ...cleanInv,
+          amount: updatedInvoice.amount,
+          date: inv.id === updatedInvoice.id ? updatedInvoice.date : inv.date, // Only update date for the edited invoice
+          billingFrequency: updatedInvoice.billingFrequency, // Propagate billing frequency changes
+          activity: [
+            ...(cleanInv.activity || []),
+            {
+              type: 'updated',
+              date: new Date().toISOString(),
+              stage: 'Amount/date updated via bulk edit'
+            }
+          ]
+          // No _bulkUpdate flag
+        };
+      });
       for (const inv of updates) {
         await updateInvoice(user.uid, inv);
       }
@@ -1452,19 +1476,23 @@ function Invoices() {
         changes.push(`Due date changed from ${originalInvoice.dueDate} to ${updatedInvoice.dueDate}`);
       }
       
+      // CRITICAL FIX: Create a clean copy of the invoice without the _bulkUpdate flag
+      // to prevent issues with subsequent edits
+      const cleanInvoice = { ...updatedInvoice };
+      delete cleanInvoice._bulkUpdate;
+      
       // Add activity log entry to the invoice
       const invoiceWithActivity = {
-        ...updatedInvoice,
+        ...cleanInvoice,
         activity: [
-          ...(updatedInvoice.activity || []),
+          ...(cleanInvoice.activity || []),
           {
             type: 'updated',
             date: new Date().toISOString(),
             changes: changes.join('; '),
             notifiedClient: options.notifyClient
           }
-        ],
-        _bulkUpdate: true
+        ]
       };
       
       // Update the invoice
@@ -1472,20 +1500,25 @@ function Invoices() {
       
       // Update future invoices if requested
       if (options.updateFutureInvoices && futureInvoices.length > 0) {
-        const updates = futureInvoices.map(inv => ({
-          ...inv,
-          amount: updatedInvoice.amount,
-          description: updatedInvoice.description,
-          activity: [
-            ...(inv.activity || []),
-            {
-              type: 'updated',
-              date: new Date().toISOString(),
-              stage: 'Updated from active invoice change'
-            }
-          ],
-          _bulkUpdate: true
-        }));
+        const updates = futureInvoices.map(inv => {
+          // Remove _bulkUpdate flag from each future invoice too
+          const cleanFutureInvoice = { ...inv };
+          delete cleanFutureInvoice._bulkUpdate;
+          
+          return {
+            ...cleanFutureInvoice,
+            amount: cleanInvoice.amount,
+            description: cleanInvoice.description,
+            activity: [
+              ...(cleanFutureInvoice.activity || []),
+              {
+                type: 'updated',
+                date: new Date().toISOString(),
+                stage: 'Updated from active invoice change'
+              }
+            ]
+          };
+        });
         
         for (const inv of updates) {
           await updateInvoice(user.uid, inv);
@@ -2423,6 +2456,7 @@ function Invoices() {
       />
 
       <ActiveInvoiceUpdateModal
+        key={activeInvoiceUpdateData?.modalKey || undefined}
         isOpen={showActiveInvoiceUpdateModal}
         onClose={() => setShowActiveInvoiceUpdateModal(false)}
         onConfirm={handleActiveInvoiceUpdateConfirm}
