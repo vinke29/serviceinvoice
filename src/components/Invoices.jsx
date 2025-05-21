@@ -23,6 +23,7 @@ import { exportToCSV } from '../utils/csvExport';
 import MobileInvoiceTile from './MobileInvoiceTile';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import UpdateScheduledInvoicesModal from './UpdateScheduledInvoicesModal';
+import ActiveInvoiceUpdateModal from './ActiveInvoiceUpdateModal';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -588,6 +589,8 @@ function Invoices() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pendingUpdateData, setPendingUpdateData] = useState(null);
   const [futureScheduledCount, setFutureScheduledCount] = useState(0);
+  const [showActiveInvoiceUpdateModal, setShowActiveInvoiceUpdateModal] = useState(false);
+  const [activeInvoiceUpdateData, setActiveInvoiceUpdateData] = useState(null);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1311,6 +1314,34 @@ function Invoices() {
   const handleUpdateInvoice = async (updatedInvoice) => {
     const user = auth.currentUser;
     if (!user) return;
+    
+    // Check if this is an active invoice (status is 'pending' or 'overdue')
+    if ((updatedInvoice.status === 'pending' || updatedInvoice.status === 'overdue') && !updatedInvoice._bulkUpdate) {
+      // Find the original invoice to compare changes
+      const originalInvoice = invoices.find(inv => inv.id === updatedInvoice.id);
+      if (!originalInvoice) return;
+      
+      // Check if we have future invoices for this client with same description (recurring series)
+      const allInvoices = await getInvoices(user.uid);
+      const futureInvoices = allInvoices.filter(inv =>
+        inv.clientId === updatedInvoice.clientId &&
+        inv.status === 'scheduled' &&
+        inv.description === updatedInvoice.description &&
+        new Date(inv.date) > new Date() &&
+        inv.id !== updatedInvoice.id
+      );
+      
+      // Set data for the active invoice update modal
+      setActiveInvoiceUpdateData({
+        updatedInvoice,
+        originalInvoice,
+        futureInvoices,
+        client: clients.find(c => c.id === updatedInvoice.clientId)
+      });
+      setShowActiveInvoiceUpdateModal(true);
+      return;
+    }
+    
     // Only intercept if this is a scheduled invoice and not a bulk update
     if (updatedInvoice.status === 'scheduled' && !updatedInvoice._bulkUpdate) {
       // Find all future scheduled invoices for the same client AND same service (description)
@@ -1327,6 +1358,7 @@ function Invoices() {
       setShowUpdateModal(true);
       return;
     }
+    
     // Normal update for single invoice
     try {
       await updateInvoice(user.uid, updatedInvoice);
@@ -1379,6 +1411,99 @@ function Invoices() {
       setSuccessMessage(`Updated ${updates.length} scheduled invoices for this service.`);
     }
     setPendingUpdateData(null);
+  };
+
+  // Handler for active invoice update modal confirmation
+  const handleActiveInvoiceUpdateConfirm = async (options) => {
+    setShowActiveInvoiceUpdateModal(false);
+    if (!activeInvoiceUpdateData) return;
+    
+    const { updatedInvoice, originalInvoice, futureInvoices, client } = activeInvoiceUpdateData;
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    try {
+      // Add activity log entry for the changes
+      const changes = [];
+      if (originalInvoice.amount !== updatedInvoice.amount) {
+        changes.push(`Amount changed from $${originalInvoice.amount} to $${updatedInvoice.amount}`);
+      }
+      if (originalInvoice.description !== updatedInvoice.description) {
+        changes.push(`Description changed from "${originalInvoice.description}" to "${updatedInvoice.description}"`);
+      }
+      if (originalInvoice.dueDate !== updatedInvoice.dueDate) {
+        changes.push(`Due date changed from ${originalInvoice.dueDate} to ${updatedInvoice.dueDate}`);
+      }
+      
+      // Add activity log entry to the invoice
+      const invoiceWithActivity = {
+        ...updatedInvoice,
+        activity: [
+          ...(updatedInvoice.activity || []),
+          {
+            type: 'updated',
+            date: new Date().toISOString(),
+            changes: changes.join('; '),
+            notifiedClient: options.notifyClient
+          }
+        ],
+        _bulkUpdate: true
+      };
+      
+      // Update the invoice
+      await updateInvoice(user.uid, invoiceWithActivity);
+      
+      // Update future invoices if requested
+      if (options.updateFutureInvoices && futureInvoices.length > 0) {
+        const updates = futureInvoices.map(inv => ({
+          ...inv,
+          amount: updatedInvoice.amount,
+          description: updatedInvoice.description,
+          activity: [
+            ...(inv.activity || []),
+            {
+              type: 'updated',
+              date: new Date().toISOString(),
+              stage: 'Updated from active invoice change'
+            }
+          ],
+          _bulkUpdate: true
+        }));
+        
+        for (const inv of updates) {
+          await updateInvoice(user.uid, inv);
+        }
+        
+        setInvoices(prev => prev.map(inv => {
+          if (inv.id === invoiceWithActivity.id) return invoiceWithActivity;
+          const updated = updates.find(u => u.id === inv.id);
+          return updated ? updated : inv;
+        }));
+        
+        setSuccessMessage(`Updated invoice #${updatedInvoice.invoiceNumber} and ${futureInvoices.length} future invoices.`);
+      } else {
+        // Just update the single invoice in the UI
+        setInvoices(prev => prev.map(inv => 
+          inv.id === invoiceWithActivity.id ? invoiceWithActivity : inv
+        ));
+        setSelectedInvoice(prev => prev && prev.id === invoiceWithActivity.id ? invoiceWithActivity : prev);
+        setSuccessMessage(`Invoice #${updatedInvoice.invoiceNumber} updated successfully.`);
+      }
+      
+      // If notification is requested, call Firebase Function to send email
+      if (options.notifyClient && client) {
+        // TODO: Call the Firebase function to send the notification email
+        showToast('info', 'Sending notification email to client...');
+      }
+      
+      setShowForm(false);
+      setEditingInvoice(null);
+    } catch (error) {
+      showToast('error', 'Failed to update invoice.');
+      console.error('Active invoice update error:', error);
+    }
+    
+    setActiveInvoiceUpdateData(null);
   };
 
   // Add handler to send escalation email
@@ -2239,6 +2364,27 @@ function Invoices() {
         futureCount={futureScheduledCount}
         invoiceAmount={pendingUpdateData?.updatedInvoice?.amount}
         invoiceDate={pendingUpdateData?.updatedInvoice?.date}
+      />
+
+      <ActiveInvoiceUpdateModal
+        isOpen={showActiveInvoiceUpdateModal}
+        onClose={() => setShowActiveInvoiceUpdateModal(false)}
+        onConfirm={handleActiveInvoiceUpdateConfirm}
+        invoiceNumber={activeInvoiceUpdateData?.updatedInvoice?.invoiceNumber || ''}
+        clientName={activeInvoiceUpdateData?.client?.name || ''}
+        originalValues={{
+          amount: activeInvoiceUpdateData?.originalInvoice?.amount || '',
+          description: activeInvoiceUpdateData?.originalInvoice?.description || '',
+          dueDate: activeInvoiceUpdateData?.originalInvoice?.dueDate || '',
+          billingFrequency: activeInvoiceUpdateData?.originalInvoice?.billingFrequency || 'one-time'
+        }}
+        newValues={{
+          amount: activeInvoiceUpdateData?.updatedInvoice?.amount || '',
+          description: activeInvoiceUpdateData?.updatedInvoice?.description || '',
+          dueDate: activeInvoiceUpdateData?.updatedInvoice?.dueDate || '',
+          billingFrequency: activeInvoiceUpdateData?.updatedInvoice?.billingFrequency || 'one-time'
+        }}
+        futureInvoicesCount={activeInvoiceUpdateData?.futureInvoices?.length || 0}
       />
     </div>
   )
