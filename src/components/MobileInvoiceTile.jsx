@@ -1,5 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { CheckIcon, ChevronRightIcon, BellIcon, ExclamationTriangleIcon, Pencil2Icon, TrashIcon } from '@radix-ui/react-icons';
+import { CheckIcon, ChevronRightIcon, BellIcon, ExclamationTriangleIcon, Pencil2Icon, TrashIcon, ClipboardIcon, ExternalLinkIcon } from '@radix-ui/react-icons';
+import { pdfService } from '../services/pdfService';
+import { storage, auth } from '../firebase';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { toast } from 'react-hot-toast';
 
 function getInitials(name) {
   if (!name) return '';
@@ -15,11 +19,45 @@ function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete
     : invoice.status && invoice.status.toLowerCase() === 'overdue'
       ? 'bg-red-100 text-red-700'
       : 'bg-orange-50 text-orange-600';
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function handleTileClick() {
     setExpanded(v => !v);
     setShowActions(true);
   }
+
+  // Helper to generate/upload PDF and get URL
+  const getOrCreatePdfUrl = async () => {
+    if (pdfUrl) return pdfUrl;
+    setPdfLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const userId = user.uid;
+      const invoiceId = invoice.id;
+      const fileRef = storageRef(storage, `invoices/${userId}/${invoiceId}.pdf`);
+      try {
+        // Try to get existing URL
+        const url = await getDownloadURL(fileRef);
+        setPdfUrl(url);
+        return url;
+      } catch (e) {
+        // If not found, generate and upload
+        const pdfBlob = await pdfService.generateInvoicePdf(invoice);
+        await uploadBytes(fileRef, pdfBlob, { contentType: 'application/pdf' });
+        const url = await getDownloadURL(fileRef);
+        setPdfUrl(url);
+        return url;
+      }
+    } catch (err) {
+      toast.error('Failed to generate or fetch PDF.');
+      return null;
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <>
@@ -70,6 +108,65 @@ function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete
             </button>
             <button className="w-full py-3 mb-2 rounded-lg bg-purple-50 text-purple-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowActions(false); onSendEscalation(); }}>
               <ExclamationTriangleIcon className="w-5 h-5" /> Send Escalation
+            </button>
+            {/* PDF Actions Section */}
+            <div className="mt-4 mb-2 text-sm font-semibold text-secondary-700">PDF</div>
+            <button
+              className="w-full py-3 mb-2 rounded-lg bg-primary-50 text-primary-700 font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-60"
+              disabled={pdfLoading}
+              onClick={async () => {
+                const url = await getOrCreatePdfUrl();
+                if (url) {
+                  setPdfLoading(true);
+                  try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Failed to fetch PDF');
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                  } catch (err) {
+                    toast.error('Failed to download PDF.');
+                  } finally {
+                    setPdfLoading(false);
+                  }
+                }
+              }}
+            >
+              <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
+              Download PDF {pdfLoading && <span className="ml-2 animate-spin">⏳</span>}
+            </button>
+            <button
+              className="w-full py-3 mb-2 rounded-lg bg-primary-50 text-primary-700 font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-60"
+              disabled={pdfLoading}
+              onClick={async () => {
+                const url = await getOrCreatePdfUrl();
+                if (url) {
+                  await navigator.clipboard.writeText(url);
+                  setCopied(true);
+                  toast.success('PDF link copied!');
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              }}
+            >
+              <ClipboardIcon className="h-5 w-5 mr-2" />
+              {copied ? 'Copied!' : 'Copy PDF Link'}
+            </button>
+            <button
+              className="w-full py-3 mb-2 rounded-lg bg-primary-50 text-primary-700 font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-60"
+              disabled={pdfLoading}
+              onClick={async () => {
+                const url = await getOrCreatePdfUrl();
+                if (url) window.open(url, '_blank', 'noopener');
+              }}
+            >
+              <ExternalLinkIcon className="h-5 w-5 mr-2" />
+              Open PDF
             </button>
             <button className="w-full py-3 mt-2 rounded-lg bg-secondary-100 text-secondary-700 font-semibold text-base" onClick={() => setShowActions(false)}>Cancel</button>
           </div>
