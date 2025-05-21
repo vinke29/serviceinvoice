@@ -20,6 +20,7 @@ import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
 import { useInvoices } from './InvoicesContext';
 import { exportToCSV } from '../utils/csvExport';
+import MobileInvoiceTile from './MobileInvoiceTile';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -538,11 +539,13 @@ function Invoices() {
   const [selectedScheduleYear, setSelectedScheduleYear] = useState(new Date().getFullYear());
   const [selectedScheduleMonth, setSelectedScheduleMonth] = useState(new Date().getMonth());
   const [agentConfig, setAgentConfig] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true); // Force mobile view for testing
   const [successMessage, setSuccessMessage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [actionInvoice, setActionInvoice] = useState(null);
   
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1304,6 +1307,144 @@ function Invoices() {
     return <div className="min-h-[300px] flex items-center justify-center text-lg text-secondary-600">Loading invoices...</div>
   }
 
+  // Find the main invoice list/table render and add this above it:
+  if (isMobile) {
+    return (
+      <div className="p-2 pb-24">
+        <div className="sticky top-0 z-10 bg-white pb-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full mb-2 px-4 py-3 bg-primary-600 text-white rounded-xl font-bold text-lg shadow hover:bg-primary-700 transition"
+          >
+            + Add Invoice
+          </button>
+          <input
+            type="text"
+            placeholder="Search invoices..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-2"
+          />
+          <button
+            className="w-full mb-2 px-4 py-2 bg-secondary-100 text-secondary-700 rounded-lg font-semibold text-base shadow hover:bg-secondary-200 transition"
+            onClick={() => setShowFilters(f => !f)}
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+          {showFilters && (
+            <div className="bg-white rounded-xl shadow-soft p-4 mb-2">
+              <div className="mb-4 flex justify-between items-center">
+                <h3 className="text-base font-medium text-secondary-800">Filters</h3>
+                <button
+                  onClick={() => {
+                    setStatusFilter([])
+                    setDateRange([undefined, undefined])
+                    setInvoiceDateRange([undefined, undefined])
+                  }}
+                  className="px-3 py-1 text-xs bg-secondary-100 text-secondary-700 rounded-lg hover:bg-secondary-200"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Status</label>
+                  <MultiSelectDropdown
+                    label="Status"
+                    options={INVOICE_STATUS_OPTIONS}
+                    selected={statusFilter}
+                    setSelected={setStatusFilter}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Invoice Date</label>
+                  <DateRangePopover
+                    label="Invoice Date"
+                    value={invoiceDateRange}
+                    setValue={setInvoiceDateRange}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-secondary-700 mb-1">Due Date</label>
+                  <DateRangePopover
+                    label="Due Date"
+                    value={dateRange}
+                    setValue={setDateRange}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        {/* InvoiceForm Modal */}
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={() => { setShowForm(false); setEditingInvoice(null); }}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto p-6 relative" onClick={e => e.stopPropagation()}>
+              <button className="absolute top-2 right-2 text-secondary-400 hover:text-secondary-700 text-2xl" onClick={() => { setShowForm(false); setEditingInvoice(null); }} aria-label="Close">&times;</button>
+              <InvoiceForm
+                invoice={editingInvoice}
+                onSubmit={handleAddInvoice}
+                onCancel={() => { setShowForm(false); setEditingInvoice(null); }}
+                clients={clients}
+              />
+            </div>
+          </div>
+        )}
+        {/* Invoice Tiles */}
+        {invoices.filter(inv => !inv.deleted).filter(inv => {
+          // Apply search and filters
+          const matchesSearch =
+            inv.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.description.toLowerCase().includes(searchTerm.toLowerCase());
+          // Status filter
+          const matchesStatus = statusFilter.length === 0 || statusFilter.includes(inv.status);
+          // Date filters
+          const dueDate = new Date(inv.dueDate);
+          const matchesDueDate = (!dateRange[0] || dueDate >= new Date(dateRange[0])) && (!dateRange[1] || dueDate <= new Date(dateRange[1]));
+          const invoiceDate = new Date(inv.date || inv.createdAt);
+          const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
+          return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
+        }).map((invoice) => (
+          <MobileInvoiceTile
+            key={invoice.id}
+            invoice={invoice}
+            onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
+            onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
+            onEdit={() => handleEditInvoice(invoice)}
+            onDelete={async () => {
+              const user = auth.currentUser;
+              if (user) {
+                try {
+                  await deleteInvoice(user.uid, invoice.id);
+                  setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+                  showToast('success', 'Invoice deleted.');
+                } catch (error) {
+                  showToast('error', 'Failed to delete invoice.');
+                }
+              }
+            }}
+            onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
+            onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
+          />
+        ))}
+        {/* Action Modal/Bottom Sheet */}
+        {actionModalOpen && actionInvoice && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-40" onClick={() => setActionModalOpen(false)}>
+            <div className="bg-white rounded-t-2xl shadow-xl w-full max-w-md mx-auto p-6" onClick={e => e.stopPropagation()}>
+              <div className="text-lg font-bold mb-4">Actions</div>
+              <button className="w-full py-3 mb-2 rounded-lg bg-blue-50 text-blue-700 font-semibold text-base" onClick={() => { setActionModalOpen(false); handleEditInvoice(actionInvoice); }}>Edit</button>
+              <button className="w-full py-3 mb-2 rounded-lg bg-red-50 text-red-700 font-semibold text-base" onClick={() => { setActionModalOpen(false); handleDeleteInvoice(actionInvoice); }}>Delete</button>
+              <button className="w-full py-3 mb-2 rounded-lg bg-yellow-50 text-yellow-700 font-semibold text-base" onClick={e => { setActionModalOpen(false); handleSendReminder(actionInvoice, setInvoices, setSelectedInvoice, e); }}>Send Reminder</button>
+              <button className="w-full py-3 mb-2 rounded-lg bg-purple-50 text-purple-700 font-semibold text-base" onClick={e => { setActionModalOpen(false); handleSendEscalation(actionInvoice, setInvoices, setSelectedInvoice, e); }}>Send Escalation</button>
+              <button className="w-full py-3 mt-2 rounded-lg bg-secondary-100 text-secondary-700 font-semibold text-base" onClick={() => setActionModalOpen(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+        <div className="text-center text-xs text-secondary-400 mt-8">Version 0.3.0</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
@@ -1896,6 +2037,7 @@ function Invoices() {
           </div>
         </div>
       )}
+      <div className="text-center text-xs text-secondary-400 mt-8">Version 0.3.0</div>
     </div>
   )
 }
