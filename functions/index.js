@@ -987,3 +987,98 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
   }
 });
+
+exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, context) => {
+  try {
+    const { userId, invoiceIds, clientId, scope } = data;
+    if (!context.auth || context.auth.uid !== userId) {
+      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send deletion notifications.');
+    }
+    if (!userId || !invoiceIds || !clientId) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
+    }
+
+    sgMail.setApiKey(functions.config().sendgrid.key);
+
+    // Fetch user
+    const userDoc = await admin.firestore().collection('users').doc(userId).get();
+    if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
+    const user = userDoc.data();
+
+    // Fetch client
+    const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
+    if (!clientDoc.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
+    const client = clientDoc.data();
+
+    // Fetch deleted invoices
+    const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
+    const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
+    const invoices = invoiceSnaps.map(snap => snap.exists ? snap.data() : null).filter(Boolean);
+
+    // Compose email content
+    const invoiceListHtml = invoices.map(inv =>
+      `<tr>
+        <td style='padding:8px 0;'>${inv.invoiceNumber || inv.id}</td>
+        <td style='padding:8px 0;'>${inv.description || ''}</td>
+        <td style='padding:8px 0;'>$${parseFloat(inv.amount).toFixed(2)}</td>
+        <td style='padding:8px 0;'>${inv.date || ''}</td>
+      </tr>`
+    ).join('');
+
+    const emailHtml = `
+      <html>
+      <body style="font-family: Arial, sans-serif; background: #f5f6fa; margin: 0; padding: 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
+          <tr><td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
+              <tr><td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
+                <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">Invoice Deletion Notice</span>
+              </td></tr>
+              <tr><td style="padding:32px 40px 0 40px;">
+                <div style="font-size:18px;font-weight:bold;color:#2c5282;margin-bottom:8px;">Hello ${client.name},</div>
+                <div style="font-size:15px;color:#333;margin-bottom:16px;">
+                  This is to inform you that the following invoice${invoices.length > 1 ? 's have' : ' has'} been deleted by ${user.companyName || user.name}:
+                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                  <thead>
+                    <tr>
+                      <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Invoice #</th>
+                      <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Description</th>
+                      <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Amount</th>
+                      <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Invoice Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>${invoiceListHtml}</tbody>
+                </table>
+                <div style="font-size:15px;color:#333;margin-top:24px;">
+                  If you have any questions, please contact us at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>.
+                </div>
+                <div style="font-size:13px;color:#888;margin-top:32px;">Thank you,<br/>${user.companyName || user.name}</div>
+              </td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const fromName = `${user.name || user.companyName || 'Your Service Provider'} via BillieNow`;
+    const msg = {
+      to: client.email,
+      from: {
+        email: VERIFIED_SENDER,
+        name: fromName
+      },
+      replyTo: user.email,
+      subject: `Invoice Deletion Notice from ${user.companyName || user.name}`,
+      html: emailHtml
+    };
+
+    await sgMail.send(msg);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending invoice deletion notification:', error);
+    throw new functions.https.HttpsError('internal', error.message || 'Unknown error');
+  }
+});
