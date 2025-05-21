@@ -1477,7 +1477,6 @@ function Invoices() {
             ))}
           </>
         )}
-        <div className="text-center text-xs text-secondary-400 mt-8">Version 0.3.0</div>
       </div>
     );
   }
@@ -2074,7 +2073,6 @@ function Invoices() {
           </div>
         </div>
       )}
-      <div className="text-center text-xs text-secondary-400 mt-8">Version 0.3.0</div>
     </div>
   )
 }
