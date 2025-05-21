@@ -1083,18 +1083,28 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
   }
 });
 
-// Log activity when an invoice is updated (avoid infinite loop)
+// Log activity when an invoice is updated (ignore system fields)
 exports.logInvoiceUpdate = functions.firestore
   .document('users/{userId}/invoices/{invoiceId}')
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
 
-    // Destructure activity arrays and compare the rest
-    const { activity: beforeActivity = [], ...beforeRest } = before;
-    const { activity: afterActivity = [], ...afterRest } = after;
+    // Exclude system fields and activity
+    const {
+      activity: beforeActivity = [],
+      emailSent: beforeEmailSent,
+      emailSentAt: beforeEmailSentAt,
+      ...beforeRest
+    } = before;
+    const {
+      activity: afterActivity = [],
+      emailSent: afterEmailSent,
+      emailSentAt: afterEmailSentAt,
+      ...afterRest
+    } = after;
 
-    // If only the activity array changed, do nothing
+    // If only the excluded fields changed, do nothing
     if (JSON.stringify(beforeRest) === JSON.stringify(afterRest)) {
       return null;
     }
