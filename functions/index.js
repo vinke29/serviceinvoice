@@ -183,7 +183,7 @@ exports.sendInvoiceEmail = functions.firestore
                       <div style="font-size:15px;font-weight:bold;color:#2c5282;margin-bottom:8px;">BILL TO:</div>
                       <div style="font-size:15px;color:#333;">${client.name}</div>
                       <div style="font-size:13px;color:#333;">
-                        ${[client.street, client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
+                        ${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
                       </div>
                       <div style="font-size:13px;color:#333;">${client.email}</div>
                       <div style="font-size:13px;color:#333;">${client.phone || ''}</div>
@@ -250,7 +250,7 @@ Balance Due: USD $${formatCurrency(total)}
 
 Bill To:
 ${client.name}
-${[client.street, client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
+${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
 ${client.email}
 ${client.phone || ''}
 
