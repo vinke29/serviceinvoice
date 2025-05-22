@@ -11,7 +11,7 @@ function getInitials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete, onSendReminder, onSendEscalation }) {
+function MobileInvoiceTile({ invoice, client = {}, onMarkPaid, onMarkUnpaid, onEdit, onDelete, onSendReminder, onSendEscalation }) {
   const [expanded, setExpanded] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -47,7 +47,7 @@ function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete
         return url;
       } catch (e) {
         // If not found, generate and upload
-        const pdfBlob = await pdfService.generateInvoicePdf(invoice);
+        const pdfBlob = await pdfService.generateInvoicePdf(invoice, client);
         await uploadBytes(fileRef, pdfBlob, { contentType: 'application/pdf' });
         const url = await getDownloadURL(fileRef);
         setPdfUrl(url);

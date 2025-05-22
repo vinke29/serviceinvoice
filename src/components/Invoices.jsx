@@ -1810,29 +1810,33 @@ function Invoices() {
               const invoiceDate = new Date(inv.date || inv.createdAt);
               const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
               return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
-            }).map((invoice) => (
-              <MobileInvoiceTile
-                key={invoice.id}
-                invoice={invoice}
-                onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
-                onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
-                onEdit={() => handleEditInvoice(invoice)}
-                onDelete={async () => {
-                  const user = auth.currentUser;
-                  if (user) {
-                    try {
-                      await deleteInvoice(user.uid, invoice.id);
-                      setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-                      showToast('success', 'Invoice deleted.');
-                    } catch (error) {
-                      showToast('error', 'Failed to delete invoice.');
+            }).map((invoice) => {
+              const client = clients.find(c => c.id === invoice.clientId) || {};
+              return (
+                <MobileInvoiceTile
+                  key={invoice.id}
+                  invoice={invoice}
+                  client={client}
+                  onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
+                  onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
+                  onEdit={() => handleEditInvoice(invoice)}
+                  onDelete={async () => {
+                    const user = auth.currentUser;
+                    if (user) {
+                      try {
+                        await deleteInvoice(user.uid, invoice.id);
+                        setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+                        showToast('success', 'Invoice deleted.');
+                      } catch (error) {
+                        showToast('error', 'Failed to delete invoice.');
+                      }
                     }
-                  }
-                }}
-                onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
-                onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
-              />
-            ))}
+                  }}
+                  onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
+                  onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
+                />
+              );
+            })}
           </>
         )}
         {/* Scheduled Invoices */}
@@ -1860,29 +1864,33 @@ function Invoices() {
                   const invoiceDate = new Date(inv.date || inv.createdAt);
                   const matchesInvoiceDate = (!invoiceDateRange[0] || invoiceDate >= new Date(invoiceDateRange[0])) && (!invoiceDateRange[1] || invoiceDate <= new Date(invoiceDateRange[1]));
                   return matchesSearch && matchesStatus && matchesDueDate && matchesInvoiceDate;
-                }).map((invoice) => (
-                  <MobileInvoiceTile
-                    key={invoice.id}
-                    invoice={invoice}
-                    onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
-                    onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
-                    onEdit={() => handleEditInvoice(invoice)}
-                    onDelete={async () => {
-                      const user = auth.currentUser;
-                      if (user) {
-                        try {
-                          await deleteInvoice(user.uid, invoice.id);
-                          setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
-                          showToast('success', 'Invoice deleted.');
-                        } catch (error) {
-                          showToast('error', 'Failed to delete invoice.');
+                }).map((invoice) => {
+                  const client = clients.find(c => c.id === invoice.clientId) || {};
+                  return (
+                    <MobileInvoiceTile
+                      key={invoice.id}
+                      invoice={invoice}
+                      client={client}
+                      onMarkPaid={() => handleMarkPaid(invoice, setInvoices, setSelectedInvoice)}
+                      onMarkUnpaid={() => handleMarkUnpaid(invoice, setInvoices, setSelectedInvoice)}
+                      onEdit={() => handleEditInvoice(invoice)}
+                      onDelete={async () => {
+                        const user = auth.currentUser;
+                        if (user) {
+                          try {
+                            await deleteInvoice(user.uid, invoice.id);
+                            setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
+                            showToast('success', 'Invoice deleted.');
+                          } catch (error) {
+                            showToast('error', 'Failed to delete invoice.');
+                          }
                         }
-                      }
-                    }}
-                    onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
-                    onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
-                  />
-                ))}
+                      }}
+                      onSendReminder={() => handleSendReminder(invoice, setInvoices, setSelectedInvoice)}
+                      onSendEscalation={() => handleSendEscalation(invoice, setInvoices, setSelectedInvoice)}
+                    />
+                  );
+                })}
               </>
             )}
           </>
