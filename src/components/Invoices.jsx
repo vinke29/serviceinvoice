@@ -1080,16 +1080,16 @@ function Invoices() {
     if (!user) return;
     let deletedInvoices = [];
     if (options.scope === 'single') {
-      await deleteInvoice(user.uid, invoice.id);
       deletedInvoices = [invoice];
+      await deleteInvoice(user.uid, invoice.id);
       setInvoices(prev => prev.filter(inv => inv.id !== invoice.id));
     } else {
       // Delete this and all future scheduled invoices
       const idsToDelete = [invoice.id, ...futureInvoices.map(inv => inv.id)];
+      deletedInvoices = [invoice, ...futureInvoices];
       for (const id of idsToDelete) {
         await deleteInvoice(user.uid, id);
       }
-      deletedInvoices = [invoice, ...futureInvoices];
       setInvoices(prev => prev.filter(inv => !idsToDelete.includes(inv.id)));
     }
     // Optionally notify client
@@ -1099,7 +1099,8 @@ function Invoices() {
           userId: user.uid,
           invoiceIds: deletedInvoices.map(inv => inv.id),
           clientId: client.id,
-          scope: options.scope
+          scope: options.scope,
+          invoices: deletedInvoices // Pass full invoice data
         });
       } catch (error) {
         console.error('Error sending invoice deletion notification:', error);

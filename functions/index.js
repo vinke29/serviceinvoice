@@ -143,7 +143,7 @@ exports.sendInvoiceEmail = functions.firestore
                           <td valign="top">
                             <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
                             <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                            <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                            <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
                             <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
                             <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                             ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
@@ -529,7 +529,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
                         <td valign="top">
                           <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
                           <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                          <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                          <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
                           <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
                           <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                           ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
@@ -890,7 +890,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                         <td valign="top">
                           <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
                           <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                          <div style="font-size:13px;color:#333;">${user.address || ''}${user.city ? ', ' + user.city : ''}${user.state ? ', ' + user.state : ''}${user.zip ? ' ' + user.zip : ''}</div>
+                          <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
                           <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
                           <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                           ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
@@ -999,7 +999,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
 
 exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, context) => {
   try {
-    const { userId, invoiceIds, clientId, scope } = data;
+    const { userId, invoiceIds, clientId, scope, invoices: providedInvoices } = data;
     if (!context.auth || context.auth.uid !== userId) {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send deletion notifications.');
     }
@@ -1019,20 +1019,29 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
     if (!clientDoc.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
     const client = clientDoc.data();
 
-    // Fetch deleted invoices
-    const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
-    const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
-    const invoices = invoiceSnaps.map(snap => snap.exists ? snap.data() : null).filter(Boolean);
+    // Use providedInvoices if available, otherwise fetch from Firestore
+    let invoices = [];
+    if (providedInvoices && Array.isArray(providedInvoices) && providedInvoices.length > 0) {
+      invoices = providedInvoices;
+    } else {
+      const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
+      const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
+      invoices = invoiceSnaps.map(snap => snap.exists ? snap.data() : null).filter(Boolean);
+    }
 
     // Compose email content
-    const invoiceListHtml = invoices.map(inv =>
+    const invoiceListHtml = invoices.length > 0 ? invoices.map(inv =>
       `<tr>
         <td style='padding:8px 0;'>${inv.invoiceNumber || inv.id}</td>
         <td style='padding:8px 0;'>${inv.description || ''}</td>
         <td style='padding:8px 0;'>$${parseFloat(inv.amount).toFixed(2)}</td>
         <td style='padding:8px 0;'>${inv.date || ''}</td>
       </tr>`
-    ).join('');
+    ).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#888;">No invoice details available.</td></tr>`;
+
+    const logoHtml = user.logo
+      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
 
     const emailHtml = `
       <html>
@@ -1062,7 +1071,14 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
                 <div style="font-size:15px;color:#333;margin-top:24px;">
                   If you have any questions, please contact us at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>.
                 </div>
-                <div style="font-size:13px;color:#888;margin-top:32px;">Thank you,<br/>${user.companyName || user.name}</div>
+                <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+                  ${logoHtml}
+                  <strong>${user.companyName || user.name}</strong><br/>
+                  ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+                  ${user.phone || ''}<br/>
+                  <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+                </div>
+                <div style="height:40px;"></div>
               </td></tr>
             </table>
           </td></tr>
