@@ -876,20 +876,167 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       }
     };
     const printer = new PdfPrinter(fonts);
+    
+    // Create a more professional PDF document that matches the one from the invoice drawer
     const docDefinition = {
+      pageSize: 'A4',
+      pageMargins: [40, 40, 40, 60],
       content: [
-        { text: `Invoice #${invoice.invoiceNumber} (Updated)`, style: 'header' },
-        { text: `Date: ${invoice.date}` },
-        { text: `Due Date: ${invoice.dueDate}` },
-        { text: `Client: ${client.name}` },
-        { text: `Amount: $${invoice.amount}` },
-        { text: `Description: ${invoice.description}` },
-        // Add more fields as needed
+        // Header with company info
+        {
+          columns: [
+            // Left column - company info with logo
+            {
+              width: '50%',
+              stack: [
+                // Include logo if available
+                user.logo ? {
+                  image: user.logo,
+                  width: 150,
+                  margin: [0, 0, 0, 10]
+                } : null,
+                { text: user.companyName || user.name || 'rivink', style: 'companyName' },
+                { text: `Business Number: ${user.taxId || '676457647'}`, style: 'companyDetail' },
+                { text: (user.street || user.address || '4125 Ponce de Leon') + 
+                    (user.city ? ', ' + user.city : ', Coral Gables') + 
+                    (user.state ? ', ' + user.state : ', Florida') + 
+                    ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146'), 
+                  style: 'companyDetail' 
+                },
+                { text: user.country || 'United States', style: 'companyDetail' },
+                { text: user.phone || '+13129530404', style: 'companyDetail' },
+                { text: user.email || 'ignacio+72@gmail.com', style: 'companyDetail' },
+                { text: user.website || 'https://billienow.com/profile', style: 'companyDetail' }
+              ].filter(item => item !== null) // Filter out null items (if no logo)
+            },
+            // Right column - invoice info
+            {
+              width: '50%',
+              stack: [
+                { text: 'INVOICE', style: 'invoiceTitle' },
+                { text: invoice.invoiceNumber, style: 'invoiceNumber', margin: [0, 5, 0, 15] },
+                { 
+                  columns: [
+                    { text: 'DATE', style: 'label', width: '50%' },
+                    { text: invoice.date, style: 'value', width: '50%' }
+                  ]
+                },
+                { 
+                  columns: [
+                    { text: 'DUE DATE', style: 'label', width: '50%' },
+                    { text: invoice.dueDate, style: 'value', width: '50%' }
+                  ],
+                  margin: [0, 5, 0, 0]
+                },
+                { 
+                  columns: [
+                    { text: 'BALANCE DUE', style: 'label', width: '50%' },
+                    { text: `USD $${formatCurrency(invoice.amount)}`, style: 'value', width: '50%' }
+                  ],
+                  margin: [0, 5, 0, 0]
+                }
+              ],
+              alignment: 'right'
+            }
+          ],
+          margin: [0, 0, 0, 30]
+        },
+        
+        // Bill to section
+        {
+          stack: [
+            { text: 'BILL TO', style: 'sectionHeader' },
+            { text: client.name, style: 'clientName', margin: [0, 5, 0, 0] },
+            { text: client.street || client.address || '4299 Northwest 36th Street', style: 'clientDetail' },
+            { text: (client.city || 'Miami Springs') + ', ' + (client.state || 'Florida') + ', ' + (client.postalCode || '33166'), style: 'clientDetail' },
+            { text: client.country || 'United States', style: 'clientDetail' },
+            { text: client.email || '', style: 'clientDetail' },
+            { text: client.phone || '', style: 'clientDetail' }
+          ],
+          margin: [0, 0, 0, 30]
+        },
+        
+        // Line items table
+        {
+          table: {
+            headerRows: 1,
+            widths: ['*', 'auto', 'auto', 'auto'],
+            body: [
+              // Header row
+              [
+                { text: 'DESCRIPTION', style: 'tableHeader' }, 
+                { text: 'RATE', style: 'tableHeader', alignment: 'right' },
+                { text: 'QTY', style: 'tableHeader', alignment: 'right' },
+                { text: 'AMOUNT', style: 'tableHeader', alignment: 'right' }
+              ],
+              // Line item row
+              [
+                { text: invoice.description || 'raaer', style: 'tableCell' },
+                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' },
+                { text: '1', style: 'tableCell', alignment: 'right' },
+                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' }
+              ]
+            ]
+          },
+          layout: {
+            hLineWidth: function(i, node) {
+              return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0;
+            },
+            vLineWidth: function() {
+              return 0;
+            },
+            hLineColor: function() {
+              return '#EEEEEE';
+            }
+          }
+        },
+        
+        // Subtotal
+        {
+          columns: [
+            { width: '*', text: '' },
+            {
+              width: 'auto',
+              table: {
+                body: [
+                  [
+                    { text: 'SUBTOTAL', style: 'summaryLabel', alignment: 'right' },
+                    { text: `$${formatCurrency(invoice.amount)}`, style: 'summaryValue', alignment: 'right' }
+                  ],
+                  [
+                    { text: 'TOTAL', style: 'totalLabel', alignment: 'right' },
+                    { text: `$${formatCurrency(invoice.amount)}`, style: 'totalValue', alignment: 'right' }
+                  ]
+                ]
+              },
+              layout: 'noBorders',
+              margin: [0, 15, 0, 0]
+            }
+          ]
+        }
       ],
       styles: {
-        header: { fontSize: 18, bold: true }
+        companyName: { fontSize: 20, bold: true, color: '#2c5282' },
+        companyDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
+        invoiceTitle: { fontSize: 30, bold: true, color: '#3b82f6' },
+        invoiceNumber: { fontSize: 14, bold: true },
+        label: { fontSize: 10, color: '#666666', bold: true },
+        value: { fontSize: 12, color: '#333333' },
+        sectionHeader: { fontSize: 12, bold: true, color: '#333333' },
+        clientName: { fontSize: 14, bold: true, color: '#333333' },
+        clientDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
+        tableHeader: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
+        tableCell: { fontSize: 10, color: '#333333', margin: [0, 5, 0, 5] },
+        summaryLabel: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
+        summaryValue: { fontSize: 10, color: '#333333', margin: [10, 5, 0, 5] },
+        totalLabel: { fontSize: 12, bold: true, color: '#333333', margin: [0, 5, 0, 5] },
+        totalValue: { fontSize: 12, bold: true, color: '#333333', margin: [10, 5, 0, 5] }
+      },
+      defaultStyle: {
+        font: 'Roboto'
       }
     };
+    
     const pdfDoc = printer.createPdfKitDocument(docDefinition);
     const pdfChunks = [];
     pdfDoc.on('data', chunk => pdfChunks.push(chunk));
@@ -942,25 +1089,6 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                 </tr>
                 <tr>
                   <td style="padding:32px 40px 0 40px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td valign="top" width="60" style="padding-right:20px;">
-                          ${logoHtml}
-                        </td>
-                        <td valign="top">
-                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
-                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                          <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
-                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:24px 40px 0 40px;">
                     <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
                     <p style="font-size:15px;color:#333;">This is to inform you that your invoice #${invoice.invoiceNumber} has been updated.</p>
                     <h3 style="font-size:16px;color:#333;margin-top:20px;">What has changed:</h3>
