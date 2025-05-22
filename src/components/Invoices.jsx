@@ -35,28 +35,16 @@ console.log("sendInvoiceEscalation is defined:", typeof sendInvoiceEscalation);
 
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
-  // Create a date object from the checkDate
-  const dateToCheck = new Date(checkDate);
-  
-  // Create date representation of "right now"
-  const now = new Date();
-  
-  // Get local date strings in YYYY-MM-DD format
-  const checkDateStr = dateToCheck.toISOString().split('T')[0];
-  const todayStr = now.toISOString().split('T')[0];
+  // Parse both dates as local YYYY-MM-DD
+  const today = new Date();
+  const todayYMD = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  const checkYMD = typeof checkDate === 'string'
+    ? checkDate
+    : checkDate instanceof Date
+      ? checkDate.getFullYear() + '-' + String(checkDate.getMonth() + 1).padStart(2, '0') + '-' + String(checkDate.getDate()).padStart(2, '0')
+      : '';
 
-  // Log the exact comparison
-  console.log('Date comparison:', {
-    checkDate,
-    dateToCheck: dateToCheck.toISOString(),
-    nowDate: now.toISOString(),
-    checkDateStr,
-    todayStr,
-    isInFuture: checkDateStr > todayStr
-  });
-  
-  // A simple string comparison works reliably for YYYY-MM-DD format
-  return checkDateStr > todayStr;
+  return checkYMD > todayYMD;
 }
 
 // Helper to robustly extract month/year from a scheduled invoice
@@ -857,19 +845,14 @@ function Invoices() {
         }
         
         // Use our helper function to check if the date is in the future
-        const isFutureInvoice = isDateInFuture(invoiceDate);          
-        const isRecurringInvoice = (invoiceData.billingFrequency && invoiceData.billingFrequency !== 'one-time');
-        
-        // Automatically set status to 'scheduled' for future dates
-        if (isFutureInvoice && invoiceData.status !== 'scheduled') {
-          invoiceData.status = 'scheduled';
-        } else if (!isFutureInvoice && invoiceData.status === 'scheduled') {
-          // If date is today or in the past, update status to pending
-          invoiceData.status = 'pending';
-        }
+        const isFutureInvoice = isDateInFuture(invoiceData.date); // Use the date string directly
+        // Force status to 'scheduled' for future invoices, 'pending' otherwise
+        invoiceData.status = isFutureInvoice ? 'scheduled' : 'pending';
+        if (isFutureInvoice) setShowScheduled(true);
+        console.log('DEBUG: Invoice status before save:', invoiceData.status, invoiceData.date);
         
         // If this is a recurring invoice or future-dated, make sure the scheduled view will be shown
-        if (isRecurringInvoice || isFutureInvoice) {
+        if (invoiceData.isRecurring || isFutureInvoice) {
           setShowScheduled(true);
           
           // Set the active tab to the month of the first invoice
