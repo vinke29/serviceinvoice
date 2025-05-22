@@ -94,7 +94,15 @@ class PdfService {
                     logoDefinition,
                     { text: agentConfig.companyName || 'BillieNow', style: 'companyName' },
                     { text: agentConfig.taxId ? `Business Number: ${agentConfig.taxId}` : '', style: 'companyDetail' },
-                    { text: agentConfig.address || '', style: 'companyDetail' },
+                    // Add full business address as multi-line
+                    (() => {
+                      const addressLines = [];
+                      if (agentConfig.street || agentConfig.address) addressLines.push(agentConfig.street || agentConfig.address);
+                      const cityStateZip = [agentConfig.city, agentConfig.state, agentConfig.zip || agentConfig.postalCode].filter(Boolean).join(', ');
+                      if (cityStateZip) addressLines.push(cityStateZip);
+                      if (agentConfig.country) addressLines.push(agentConfig.country);
+                      return { text: addressLines.join('\n'), style: 'companyDetail' };
+                    })(),
                     { text: agentConfig.phone || '', style: 'companyDetail' },
                     { text: agentConfig.email || '', style: 'companyDetail' },
                     { text: agentConfig.website || '', style: 'companyDetail' }
