@@ -195,41 +195,23 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
       <div className="space-y-8">
         {tab === 'details' && (
           <div className="space-y-6">
-            {/* Header Card */}
-            <div className="rounded-xl bg-white shadow border border-secondary-100 p-6 flex flex-col md:flex-row md:items-center md:justify-between mb-2">
-              <div>
-                <div className="text-2xl font-bold text-secondary-900 mb-1">Invoice #{displayInvoiceNumber}</div>
-                <div className="text-secondary-700 text-base mb-1">Client: <span className="font-semibold">{currentInvoice.clientName}</span></div>
-                <div className="text-secondary-600 text-lg font-bold">${currentInvoice.amount}</div>
+            {/* Unified Minimalistic Summary Card */}
+            <div className="rounded-xl bg-white shadow border border-secondary-100 p-6">
+              <div className="flex flex-col gap-1 mb-2">
+                <div className="flex items-center justify-between w-full">
+                  <div className="font-semibold text-secondary-900">Invoice #{displayInvoiceNumber}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-lg font-bold text-secondary-900">${currentInvoice.amount}</div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${currentInvoice.status === 'paid' ? 'bg-green-50 text-green-700' : currentInvoice.status === 'overdue' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'}`}>{currentInvoice.status.charAt(0).toUpperCase() + currentInvoice.status.slice(1)}</span>
+                  </div>
+                </div>
+                <div className="text-secondary-700 mt-1">{currentInvoice.clientName}</div>
               </div>
-              <div className="flex items-center mt-4 md:mt-0">
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${currentInvoice.status === 'paid' ? 'bg-green-100 text-green-800' : currentInvoice.status === 'overdue' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{currentInvoice.status.charAt(0).toUpperCase() + currentInvoice.status.slice(1)}</span>
-              </div>
-            </div>
-            {/* Dates Card */}
-            <div className="rounded-xl bg-white shadow border border-secondary-100 p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-xs text-secondary-500 font-semibold mb-1">Invoice Date</div>
-                <div className="text-secondary-900">{new Date(currentInvoice.date || currentInvoice.createdAt).toLocaleDateString()}</div>
-              </div>
-              <div>
-                <div className="text-xs text-secondary-500 font-semibold mb-1">Due Date</div>
-                <div className="text-secondary-900">{new Date(currentInvoice.dueDate).toLocaleDateString()} {agentConfig && <span className="text-xs text-secondary-500 ml-1">(Net {agentConfig.netDays} days)</span>}</div>
-              </div>
-              <div>
-                <div className="text-xs text-secondary-500 font-semibold mb-1">Paid Date</div>
-                <div className="text-secondary-900">{currentInvoice.paidAt ? format(new Date(currentInvoice.paidAt), 'PPP') : '--'}</div>
-              </div>
-            </div>
-            {/* Billing Card */}
-            <div className="rounded-xl bg-white shadow border border-secondary-100 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-secondary-500 font-semibold mb-1">Billing Type</div>
-                <div className="text-secondary-900">{currentInvoice.billingFrequency ? (currentInvoice.billingFrequency === 'one-time' ? 'One-Time Charge' : `Recurring (${currentInvoice.billingFrequency.charAt(0).toUpperCase() + currentInvoice.billingFrequency.slice(1)})`) : 'Not specified'}</div>
-              </div>
-              <div>
-                <div className="text-xs text-secondary-500 font-semibold mb-1">Description</div>
-                <div className="text-secondary-900">{currentInvoice.description}</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-secondary-700 text-sm">
+                <div><span className="font-medium">Invoice Date:</span> {new Date(currentInvoice.date || currentInvoice.createdAt).toLocaleDateString()}</div>
+                <div><span className="font-medium">Due Date:</span> {new Date(currentInvoice.dueDate).toLocaleDateString()} {agentConfig && <span className="text-xs text-secondary-500 ml-1">(Net {agentConfig.netDays} days)</span>}</div>
+                <div><span className="font-medium">Billing Type:</span> {currentInvoice.billingFrequency ? (currentInvoice.billingFrequency === 'one-time' ? 'One-Time Charge' : `Recurring (${currentInvoice.billingFrequency.charAt(0).toUpperCase() + currentInvoice.billingFrequency.slice(1)})`) : 'Not specified'}</div>
+                <div><span className="font-medium">Description:</span> {currentInvoice.description}</div>
               </div>
             </div>
             {/* PDF Actions & Edit Invoice Card */}
