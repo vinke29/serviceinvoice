@@ -2386,7 +2386,12 @@ function Invoices() {
                                 title="Send Now"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10l9-6 9 6-9 6-9-6zm0 0v6a9 9 0 009 9 9 9 0 009-9v-6" />
+                                  <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M22 2L15.5 22L11 13L2 8.5L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <path d="M11 13L15.5 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                  <line x1="7" y1="17" x2="4" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <line x1="9.5" y1="19.5" x2="7.5" y2="21.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                                  <line x1="12" y1="21" x2="10.5" y2="22.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                                 </svg>
                               </button>
                             )}
