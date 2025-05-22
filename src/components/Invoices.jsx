@@ -1171,6 +1171,8 @@ function Invoices() {
           return prev
         }
       })
+      // Remove the scheduled invoice from the scheduledInvoices state immediately
+      setScheduledInvoices(prev => prev.filter(inv => inv.id !== scheduledInvoice.id));
       alert(`Invoice for ${scheduledInvoice.clientName} has been created and sent successfully`)
     } catch (error) {
       console.error("Error sending invoice now:", error)
