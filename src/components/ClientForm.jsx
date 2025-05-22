@@ -115,51 +115,51 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-1 sm:px-0">
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2 px-1 sm:px-0 pb-24">
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">First Name</label>
           <input
             type="text"
             value={formData.firstName}
             onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             required
             placeholder="John"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Last Name</label>
           <input
             type="text"
             value={formData.lastName}
             onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             required
             placeholder="Smith"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Email</label>
           <input
             type="email"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             required
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Phone</label>
           <PhoneInput
             country={'us'}
             value={formData.phone}
             onChange={phone => setFormData({ ...formData, phone })}
-            inputClass="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            inputClass="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             containerClass="w-full"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Street Name</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Street Name</label>
           {isLoaded ? (
             <Autocomplete
               onLoad={ac => setAutocomplete(ac)}
@@ -195,7 +195,7 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
                   postalCode: '',
                   country: ''
                 })}
-                className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+                className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
                 placeholder="Start typing address..."
               />
             </Autocomplete>
@@ -204,87 +204,87 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
               type="text"
               value={addressFields.street}
               onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               placeholder="Start typing address..."
             />
           )}
         </div>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-2">
           <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
+            <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">City</label>
             <input
               type="text"
               value={addressFields.city}
               onChange={e => setAddressFields({ ...addressFields, city: e.target.value })}
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               placeholder="City"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
+            <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">State</label>
             <input
               type="text"
               value={addressFields.state}
               onChange={e => setAddressFields({ ...addressFields, state: e.target.value })}
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               placeholder="State"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
+            <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
             <input
               type="text"
               value={addressFields.postalCode}
               onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })}
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               placeholder="Postal Code"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
+            <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Country</label>
             <input
               type="text"
               value={addressFields.country}
               onChange={e => setAddressFields({ ...addressFields, country: e.target.value })}
-              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+              className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
               placeholder="Country"
             />
           </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Customer Since</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Customer Since</label>
           <input
             type="date"
             value={formData.customerSince}
             onChange={e => setFormData({ ...formData, customerSince: e.target.value })}
-            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             required
           />
           <span className="block text-xs text-secondary-500 mt-1">Set automatically when the client is created.</span>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Status</label>
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Status</label>
           <select
             value={formData.status}
             onChange={e => setFormData({ ...formData, status: e.target.value })}
-            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base bg-white"
+            className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
           >
             <option value="active">Active</option>
             <option value="on_hold">On Hold</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-        <div className="sticky bottom-0 bg-white pt-2 pb-1 flex gap-2 z-10">
+        <div className="fixed bottom-0 left-0 w-full z-50 bg-white pt-2 pb-3 flex gap-2 shadow-lg sm:static sm:shadow-none">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 px-4 py-3 text-secondary-700 bg-secondary-100 rounded-xl font-medium text-base"
+            className="flex-1 px-4 py-3 min-h-[44px] text-base sm:text-sm text-secondary-700 bg-secondary-100 rounded-xl font-medium shadow-sm"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-xl font-bold text-base shadow hover:bg-primary-700 transition"
+            className="flex-1 px-4 py-3 min-h-[44px] text-base sm:text-sm bg-primary-600 text-white rounded-xl font-bold shadow hover:bg-primary-700 transition"
           >
             {isNewClient ? 'Add Client' : 'Update Client'}
           </button>
