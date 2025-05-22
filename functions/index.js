@@ -5,6 +5,7 @@ const PdfPrinter = require('pdfmake');
 const fs = require('fs');
 const { Storage } = require('@google-cloud/storage');
 const path = require('path');
+const fetch = require('node-fetch');
 
 // Version 1.0.1 - Anti-spam improvements
 admin.initializeApp();
@@ -833,12 +834,25 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       return parseFloat(amount).toFixed(2);
     };
     
-    const logoHtml = user.logo
-      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
-          ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
-        </div>`;
-        
+    // Helper to convert image URL to base64 data URL
+    async function urlToBase64(url) {
+      const response = await fetch(url);
+      const buffer = await response.buffer();
+      return 'data:image/png;base64,' + buffer.toString('base64');
+    }
+    
+    let logoImage = null;
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      try {
+        logoImage = await urlToBase64(user.logo);
+      } catch (e) {
+        console.warn('Failed to convert logo URL to base64:', e);
+        logoImage = null;
+      }
+    } else if (user.logo) {
+      logoImage = user.logo;
+    }
+    
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
@@ -890,8 +904,8 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
               width: '50%',
               stack: [
                 // Include logo if available
-                user.logo ? {
-                  image: user.logo,
+                logoImage ? {
+                  image: logoImage,
                   width: 150,
                   margin: [0, 0, 0, 10]
                 } : null,
@@ -1046,7 +1060,8 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
 
     // Upload PDF to Firebase Storage
     const storage = new Storage();
-    const bucket = storage.bucket(functions.config().firebase.storage_bucket);
+    const bucketName = admin.app().options.storageBucket;
+    const bucket = storage.bucket(bucketName);
     const pdfFileName = `invoices/${userId}/invoice_${invoiceId}_updated.pdf`;
     const file = bucket.file(pdfFileName);
     await file.save(pdfBuffer, { contentType: 'application/pdf' });
