@@ -1,3 +1,3 @@
-export const VERSION = '0.6.9';
+export const VERSION = '0.7.0';
 
-export default "0.6.9"
+export default "0.7.0"

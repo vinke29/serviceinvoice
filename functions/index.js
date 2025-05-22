@@ -1,6 +1,10 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const sgMail = require('@sendgrid/mail');
+const PdfPrinter = require('pdfmake');
+const fs = require('fs');
+const { Storage } = require('@google-cloud/storage');
+const path = require('path');
 
 // Version 1.0.1 - Anti-spam improvements
 admin.initializeApp();
@@ -862,6 +866,62 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       </table>` : 
       '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
     
+    // PDF generation logic
+    const fonts = {
+      Roboto: {
+        normal: path.join(__dirname, 'fonts/Roboto-Regular.ttf'),
+        bold: path.join(__dirname, 'fonts/Roboto-Bold.ttf'),
+        italics: path.join(__dirname, 'fonts/Roboto-Italic.ttf'),
+        bolditalics: path.join(__dirname, 'fonts/Roboto-BoldItalic.ttf')
+      }
+    };
+    const printer = new PdfPrinter(fonts);
+    const docDefinition = {
+      content: [
+        { text: `Invoice #${invoice.invoiceNumber} (Updated)`, style: 'header' },
+        { text: `Date: ${invoice.date}` },
+        { text: `Due Date: ${invoice.dueDate}` },
+        { text: `Client: ${client.name}` },
+        { text: `Amount: $${invoice.amount}` },
+        { text: `Description: ${invoice.description}` },
+        // Add more fields as needed
+      ],
+      styles: {
+        header: { fontSize: 18, bold: true }
+      }
+    };
+    const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    const pdfChunks = [];
+    pdfDoc.on('data', chunk => pdfChunks.push(chunk));
+    pdfDoc.end();
+    await new Promise(resolve => pdfDoc.on('end', resolve));
+    const pdfBuffer = Buffer.concat(pdfChunks);
+
+    // Upload PDF to Firebase Storage
+    const storage = new Storage();
+    const bucket = storage.bucket(functions.config().firebase.storage_bucket);
+    const pdfFileName = `invoices/${userId}/invoice_${invoiceId}_updated.pdf`;
+    const file = bucket.file(pdfFileName);
+    await file.save(pdfBuffer, { contentType: 'application/pdf' });
+    await file.makePublic();
+    const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${pdfFileName}`;
+
+    // Add business details and logo at the bottom of the email
+    const businessDetailsHtml = `
+      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+        ${user.logo ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />` : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`}
+        <strong>${user.companyName || user.name}</strong><br/>
+        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+        ${user.phone || ''}<br/>
+        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+      </div>
+      <div style="height:40px;"></div>
+    `;
+
+    // Add PDF URL to the email body
+    const pdfUrlHtml = `<div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>`;
+
+    // Insert business details and PDF URL at the bottom of the email
     const updateHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -903,10 +963,8 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                   <td style="padding:24px 40px 0 40px;">
                     <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
                     <p style="font-size:15px;color:#333;">This is to inform you that your invoice #${invoice.invoiceNumber} has been updated.</p>
-                    
                     <h3 style="font-size:16px;color:#333;margin-top:20px;">What has changed:</h3>
                     ${changesHtml}
-                    
                     <h3 style="font-size:16px;color:#333;margin-top:20px;">Updated Invoice Summary:</h3>
                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
                       <tr style="background-color: #f2f2f2;">
@@ -920,11 +978,12 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                         <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
                       </tr>
                     </table>
-                    
                     <p style="font-size:15px;color:#333;">A revised copy of your invoice has been attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
+                    ${pdfUrlHtml}
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
+                <tr><td>${businessDetailsHtml}</td></tr>
               </table>
             </td>
           </tr>
@@ -943,8 +1002,16 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       },
       replyTo: user.email,
       subject: `Invoice #${invoice.invoiceNumber} Updated`,
-      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nRegards,\n${senderName}`,
-      html: updateHtml
+      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nYou can also view or download the updated invoice here: ${pdfUrl}\n\nRegards,\n${senderName}`,
+      html: updateHtml,
+      attachments: [
+        {
+          content: pdfBuffer.toString('base64'),
+          filename: `Invoice_${invoice.invoiceNumber}_Updated.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ]
     };
 
     try {
