@@ -4,6 +4,7 @@ import { pdfService } from '../services/pdfService';
 import { storage, auth } from '../firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from 'react-hot-toast';
+import DeleteInvoiceModal from './DeleteInvoiceModal';
 
 function getInitials(name) {
   if (!name) return '';
@@ -13,6 +14,7 @@ function getInitials(name) {
 function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete, onSendReminder, onSendEscalation }) {
   const [expanded, setExpanded] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const isPaid = invoice.status && invoice.status.toLowerCase() === 'paid';
   const statusColor = isPaid
     ? 'bg-green-100 text-green-700'
@@ -100,7 +102,13 @@ function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete
             <button className="w-full py-3 mb-2 rounded-lg bg-blue-50 text-blue-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowActions(false); onEdit(); }}>
               <Pencil2Icon className="w-5 h-5" /> Edit
             </button>
-            <button className="w-full py-3 mb-2 rounded-lg bg-red-50 text-red-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowActions(false); onDelete(); }}>
+            <button
+              className="w-full py-3 mb-2 rounded-lg bg-red-50 text-red-700 font-semibold text-base flex items-center justify-center gap-2"
+              onClick={() => {
+                setShowActions(false);
+                setIsDeleteModalOpen(true);
+              }}
+            >
               <TrashIcon className="w-5 h-5" /> Delete
             </button>
             <button className="w-full py-3 mb-2 rounded-lg bg-yellow-50 text-yellow-700 font-semibold text-base flex items-center justify-center gap-2" onClick={() => { setShowActions(false); onSendReminder(); }}>
@@ -172,6 +180,17 @@ function MobileInvoiceTile({ invoice, onMarkPaid, onMarkUnpaid, onEdit, onDelete
           </div>
         </div>
       )}
+      {/* Delete Invoice Modal */}
+      <DeleteInvoiceModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={(options) => {
+          onDelete(options);
+          setIsDeleteModalOpen(false);
+        }}
+        invoice={invoice}
+        clientName={invoice?.clientName}
+      />
     </>
   );
 }
