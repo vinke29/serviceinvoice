@@ -416,7 +416,7 @@ function OnboardingFlow({ onComplete }) {
               <h1 className="text-4xl font-extrabold text-blue-900 mb-4">Welcome to Billie</h1>
               <p className="text-xl text-blue-800 mb-4 font-medium">Your invoice automation assistant.</p>
               <p className="text-lg text-blue-900 mb-8">Just a few quick questions and we'll have Billie up and running for you.</p>
-              <button onClick={handleNext} className="px-8 py-3 rounded-lg bg-blue-700 text-white text-lg font-bold shadow-lg hover:bg-blue-800 transition">Next</button>
+              <button onClick={handleNext} className="w-full px-8 py-4 rounded-xl bg-blue-700 text-white text-lg font-bold shadow-lg hover:bg-blue-800 transition">Next</button>
             </div>
           </div>
         ) : step.inputFields ? (
@@ -469,25 +469,23 @@ function OnboardingFlow({ onComplete }) {
                   )}
                 </div>
               ))}
-              <div className="flex flex-row gap-3 justify-between mt-6 w-full">
+              <div className="flex flex-col gap-3 pt-4 w-full">
+                <button
+                  type="submit"
+                  className="w-full px-4 py-4 bg-primary-600 text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition-colors duration-200 shadow-md"
+                  disabled={step.inputFields.some(field => !userInfo[field.name])}
+                >
+                  Next
+                </button>
                 {currentStep > 0 && (
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="px-4 py-2 rounded-lg bg-gray-200 text-blue-900 font-bold hover:bg-gray-300 transition flex items-center"
+                    className="w-full px-4 py-4 rounded-xl bg-gray-200 text-blue-900 font-bold text-lg hover:bg-gray-300 transition flex items-center justify-center shadow"
                   >
                     <span className="mr-1">←</span> Back
                   </button>
                 )}
-                <div className="flex gap-3 w-full justify-end">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-700 text-white rounded-lg font-bold shadow-lg hover:bg-blue-800 transition"
-                    disabled={step.inputFields.some(field => !userInfo[field.name])}
-                  >
-                    Next
-                  </button>
-                </div>
               </div>
             </form>
           </div>
@@ -499,30 +497,29 @@ function OnboardingFlow({ onComplete }) {
                 onSubmit={handleClientSubmit} 
                 onCancel={handleSkipClient}
                 renderActions={({ onSubmit, onCancel }) => (
-                  <div className="flex flex-row gap-3 justify-between mt-6 w-full">
+                  <div className="flex flex-col gap-3 pt-4 w-full">
+                    <button
+                      type="submit"
+                      onClick={onSubmit}
+                      className="w-full px-4 py-4 bg-primary-600 text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition-colors duration-200 shadow-md"
+                    >
+                      Add Client
+                    </button>
                     <button
                       type="button"
                       onClick={handleBack}
-                      className="px-4 py-2 rounded-lg bg-gray-200 text-blue-900 font-bold hover:bg-gray-300 transition flex items-center"
+                      className="w-full px-4 py-4 rounded-xl bg-gray-200 text-blue-900 font-bold text-lg hover:bg-gray-300 transition flex items-center justify-center shadow"
                     >
                       <span className="mr-1">←</span> Back
                     </button>
-                    <div className="flex gap-3">
-                      <button
-                        type="button"
-                        onClick={onCancel}
-                        className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
-                      >
-                        Skip for now
-                      </button>
-                      <button
-                        type="submit"
-                        onClick={onSubmit}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-                      >
-                        Add Client
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={onCancel}
+                      className="w-full text-center text-secondary-500 text-base font-medium underline hover:text-secondary-700 focus:outline-none bg-transparent shadow-none px-0 py-2"
+                      style={{ background: 'none' }}
+                    >
+                      Skip for now
+                    </button>
                   </div>
                 )}
                 formData={clientFormData}

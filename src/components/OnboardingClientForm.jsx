@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import PhoneInput from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api'
@@ -22,14 +22,6 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
     libraries: ['places'],
   });
 
-  const [addressFields, setAddressFields] = useState({
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: ''
-  });
-
   const autocompleteRef = useRef(null);
 
   const handleSubmit = (e) => {
@@ -37,7 +29,6 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
     // Combine firstName and lastName into name field for submission
     const submissionData = {
       ...data,
-      ...addressFields,
       name: `${data.firstName} ${data.lastName}`.trim()
     };
     // Remove firstName and lastName from final submission
@@ -48,53 +39,54 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" id="onboarding-client-form">
-      <div className="grid grid-cols-2 gap-4">
+      {/* Name fields: stack vertically on mobile, grid on md+ */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">First Name</label>
+          <label className="block text-base font-medium text-secondary-700 mb-2">First Name</label>
           <input
             type="text"
             value={data.firstName}
             onChange={(e) => setData({ ...data, firstName: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
             required
             placeholder="John"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Last Name</label>
+          <label className="block text-base font-medium text-secondary-700 mb-2">Last Name</label>
           <input
             type="text"
             value={data.lastName}
             onChange={(e) => setData({ ...data, lastName: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
             required
             placeholder="Smith"
           />
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Email</label>
+        <label className="block text-base font-medium text-secondary-700 mb-2">Email</label>
         <input
           type="email"
           value={data.email}
           onChange={(e) => setData({ ...data, email: e.target.value })}
-          className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
           required
           placeholder="client@example.com"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Phone</label>
+        <label className="block text-base font-medium text-secondary-700 mb-2">Phone</label>
         <PhoneInput
           country={'us'}
           value={data.phone}
           onChange={phone => setData({ ...data, phone })}
-          inputClass="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          inputClass="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
           containerClass="w-full"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-secondary-700 mb-1">Street Name</label>
+        <label className="block text-base font-medium text-secondary-700 mb-2">Street Name</label>
         {isLoaded ? (
           <Autocomplete
             onLoad={ref => (autocompleteRef.current = ref)}
@@ -106,7 +98,8 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
                 const comp = components.find(c => c.types.includes(type));
                 return comp ? comp.long_name : '';
               };
-              setAddressFields({
+              setData({
+                ...data,
                 street: `${getComponent('street_number')} ${getComponent('route')}`.trim() || place.name || '',
                 city: getComponent('locality') || getComponent('sublocality') || '',
                 state: getComponent('administrative_area_level_1'),
@@ -117,9 +110,9 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
           >
             <input
               type="text"
-              value={addressFields.street}
-              onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
-              className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              value={data.street}
+              onChange={e => setData({ ...data, street: e.target.value })}
+              className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
               required
               placeholder="Start typing address..."
             />
@@ -127,30 +120,31 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
         ) : (
           <input
             type="text"
-            value={addressFields.street}
-            onChange={e => setAddressFields({ ...addressFields, street: e.target.value })}
-            className="w-full px-4 py-2 border border-secondary-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            value={data.street}
+            onChange={e => setData({ ...data, street: e.target.value })}
+            className="w-full px-4 py-3 border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base"
             required
             placeholder="Street address"
           />
         )}
       </div>
-      <div className="grid grid-cols-2 gap-4 mt-2">
+      {/* Address fields: stack vertically on mobile, grid on md+ */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mt-2">
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">City</label>
-          <input type="text" value={addressFields.city} onChange={e => setAddressFields({ ...addressFields, city: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+          <label className="block text-base font-medium text-secondary-700 mb-2">City</label>
+          <input type="text" value={data.city} onChange={e => setData({ ...data, city: e.target.value })} className="w-full px-4 py-3 border border-secondary-200 rounded-xl text-base" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">State</label>
-          <input type="text" value={addressFields.state} onChange={e => setAddressFields({ ...addressFields, state: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+          <label className="block text-base font-medium text-secondary-700 mb-2">State</label>
+          <input type="text" value={data.state} onChange={e => setData({ ...data, state: e.target.value })} className="w-full px-4 py-3 border border-secondary-200 rounded-xl text-base" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Postal Code</label>
-          <input type="text" value={addressFields.postalCode} onChange={e => setAddressFields({ ...addressFields, postalCode: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+          <label className="block text-base font-medium text-secondary-700 mb-2">Postal Code</label>
+          <input type="text" value={data.postalCode} onChange={e => setData({ ...data, postalCode: e.target.value })} className="w-full px-4 py-3 border border-secondary-200 rounded-xl text-base" required />
         </div>
         <div>
-          <label className="block text-sm font-medium text-secondary-700 mb-1">Country</label>
-          <input type="text" value={addressFields.country} onChange={e => setAddressFields({ ...addressFields, country: e.target.value })} className="w-full px-4 py-2 border border-secondary-200 rounded-lg" required />
+          <label className="block text-base font-medium text-secondary-700 mb-2">Country</label>
+          <input type="text" value={data.country} onChange={e => setData({ ...data, country: e.target.value })} className="w-full px-4 py-3 border border-secondary-200 rounded-xl text-base" required />
         </div>
       </div>
       {/* Action row: use renderActions if provided, else default */}
@@ -160,19 +154,19 @@ function OnboardingClientForm({ onSubmit, onCancel, renderActions, formData, set
           onCancel,
         })
       ) : (
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex flex-col gap-3 pt-4 w-full">
+          <button
+            type="submit"
+            className="w-full px-4 py-4 bg-primary-600 text-white rounded-xl font-bold text-lg hover:bg-primary-700 transition-colors duration-200 shadow-md"
+          >
+            Add Client
+          </button>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-secondary-700 hover:text-secondary-900 font-medium"
+            className="w-full px-4 py-4 text-secondary-700 font-medium bg-secondary-100 rounded-xl text-lg hover:text-secondary-900 hover:bg-secondary-200 transition-colors duration-200 shadow"
           >
             Skip for now
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-          >
-            Add Client
           </button>
         </div>
       )}
