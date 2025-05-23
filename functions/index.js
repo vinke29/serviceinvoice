@@ -535,9 +535,10 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
+    // Fix logo centering in businessDetailsHtml for both update and reminder emails
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
+        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -908,7 +909,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     // Add business details HTML for update notification
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
+        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -1093,6 +1094,17 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
         ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
         : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
 
+    const businessDetailsHtml = `
+      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
+        <strong>${user.companyName || user.name}</strong><br/>
+        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+        ${user.phone || ''}<br/>
+        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+      </div>
+      <div style="height:40px;"></div>
+    `;
+
     const emailHtml = `
       <html>
       <body style="font-family: Arial, sans-serif; background: #f5f6fa; margin: 0; padding: 0;">
@@ -1121,18 +1133,11 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
                 <div style="font-size:15px;color:#333;margin-top:24px;">
                   If you have any questions, please contact us at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>.
                 </div>
-                <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-                  <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
-                  <strong>${user.companyName || user.name}</strong><br/>
-                  ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
-                  ${user.phone || ''}<br/>
-                  <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
-                </div>
-                <div style="height:40px;"></div>
               </td></tr>
             </table>
           </td></tr>
         </table>
+        ${businessDetailsHtml}
       </body>
       </html>
     `;
