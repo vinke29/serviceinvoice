@@ -139,36 +139,6 @@ exports.sendInvoiceEmail = functions.firestore
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding:32px 40px 0 40px;">
-                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td valign="top" width="60" style="padding-right:20px;">
-                            ${{
-                              logoHtml: user.logo
-                                ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-                                : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
-                                    ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
-                                  </div>`
-                            }.logoHtml}
-                          </td>
-                          <td valign="top">
-                            <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
-                            <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                            <div style="font-size:13px;color:#333;">
-                              ${(client.street || client.address || '4125 Ponce de Leon') +
-                                (user.city ? ', ' + user.city : ', Coral Gables') +
-                                (user.state ? ', ' + user.state : ', Florida') +
-                                ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146')}
-                            </div>
-                            <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-                            <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-                            ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
                     <td style="padding:24px 40px 0 40px;">
                       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:4px;">
                         <tr>
@@ -215,6 +185,7 @@ exports.sendInvoiceEmail = functions.firestore
               </td>
             </tr>
           </table>
+          ${businessDetailsHtml}
         </body>
         </html>
       `;
@@ -239,57 +210,57 @@ exports.sendInvoiceEmail = functions.firestore
             disposition: 'attachment'
           }
         ]
-      };
+    };
 
-      try {
-        await sgMail.send(msg);
+    try {
+      await sgMail.send(msg);
         // Log update notification activity
-        await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
-          activity: admin.firestore.FieldValue.arrayUnion({
-            type: 'reminder_sent',
-            stage: 'Reminder Sent',
-            date: new Date().toISOString()
-          })
-        });
+      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
+        activity: admin.firestore.FieldValue.arrayUnion({
+          type: 'reminder_sent',
+          stage: 'Reminder Sent',
+          date: new Date().toISOString()
+        })
+      });
         return { success: true, message: 'Invoice reminder sent successfully' };
-      } catch (error) {
-        console.error('Error sending update notification:', error);
-        
-        // Log detailed error information
-        if (error.response && error.response.body) {
-          console.log('SendGrid error details:', error.response.body);
-        }
-        
-        // Check if this is a SendGrid credits exceeded error
-        if (error.code === 401 && 
-            error.response && 
-            error.response.body && 
-            error.response.body.errors && 
-            error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
-          throw new functions.https.HttpsError(
-            'resource-exhausted', 
-            'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
-          );
-        }
-        
-        // For general SendGrid authentication errors
-        if (error.code === 401) {
-          throw new functions.https.HttpsError(
-            'unauthenticated', 
-            'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
-          );
-        }
-        
-        throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
-      }
     } catch (error) {
-      console.error('Function error:', error);
-      if (error instanceof functions.https.HttpsError) {
-        throw error;
+      console.error('Error sending update notification:', error);
+      
+      // Log detailed error information
+      if (error.response && error.response.body) {
+        console.log('SendGrid error details:', error.response.body);
       }
-      throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
+      
+      // Check if this is a SendGrid credits exceeded error
+      if (error.code === 401 && 
+          error.response && 
+          error.response.body && 
+          error.response.body.errors && 
+          error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
+        throw new functions.https.HttpsError(
+          'resource-exhausted', 
+          'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
+        );
+      }
+      
+      // For general SendGrid authentication errors
+      if (error.code === 401) {
+        throw new functions.https.HttpsError(
+          'unauthenticated', 
+          'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
+        );
+      }
+      
+      throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
     }
-  });
+  } catch (error) {
+    console.error('Function error:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
+  }
+});
 
 exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, context) => {
   try {
