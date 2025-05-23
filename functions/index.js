@@ -914,8 +914,17 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       <div style="height:40px;"></div>
     `;
     
+    // --- PDF logo logic (same as sendInvoiceEmail) ---
+    let logoImage = null;
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      try {
+        logoImage = await urlToBase64(user.logo);
+      } catch (e) {
+        logoImage = null;
+      }
+    }
     // Generate PDF buffer
-    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage: logoImageUpdate });
+    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
 
     // Insert business details and PDF URL at the bottom of the email
     const updateHtml = `
