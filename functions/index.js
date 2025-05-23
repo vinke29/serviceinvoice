@@ -117,25 +117,22 @@ exports.sendInvoiceEmail = functions.firestore
       // --- Improved logo logic for all invoice-related emails ---
       let logoHtmlInvoice = '';
       if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-        logoHtmlInvoice = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 8px auto;" />`;
+        logoHtmlInvoice = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
       } else {
-        logoHtmlInvoice = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;margin:0 auto 8px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+        logoHtmlInvoice = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
       }
-      // Business details block (match update notification style)
+      // Business details block (EXACT copy from update notification)
       const businessDetailsHtml = `
-        <div style="margin-top:0;font-size:13px;color:#333;text-align:left;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td align="left" style="width:70px;vertical-align:top;padding-right:16px;">${logoHtmlInvoice}</td>
-            <td align="left" style="vertical-align:top;">
-              <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
-              <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-              <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
-              <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-              <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-              ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-            </td>
-          </tr></table>
-        </div>`;
+        <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlInvoice}</td></tr></table>
+          <strong>${user.companyName || user.name}</strong><br/>
+          ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+          ${user.phone || ''}<br/>
+          <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+          ${user.website ? `<div style=\"font-size:13px;color:#2c5282;\"><a href=\"${user.website}\" style=\"color:#2c5282;text-decoration:underline;\">${user.website}</a></div>` : ''}
+        </div>
+        <div style="height:40px;"></div>
+      `;
 
       const emailHtml = `
         <!DOCTYPE html>
