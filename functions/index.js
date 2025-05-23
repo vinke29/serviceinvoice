@@ -506,6 +506,17 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
+    const businessDetailsHtml = `
+      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+        ${logoHtml}
+        <strong>${user.companyName || user.name}</strong><br/>
+        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+        ${user.phone || ''}<br/>
+        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+        ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+      </div>
+      <div style="height:40px;"></div>
+    `;
     const reminderHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -526,21 +537,12 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
                 </tr>
                 <tr>
                   <td style="padding:32px 40px 0 40px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td valign="top" width="60" style="padding-right:20px;">
-                          ${logoHtml}
-                        </td>
-                        <td valign="top">
-                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
-                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                          <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
-                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-                        </td>
-                      </tr>
-                    </table>
+                    <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
+                    <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                    <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
+                    <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                    <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                    ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
                   </td>
                 </tr>
                 <tr>
@@ -568,6 +570,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
             </td>
           </tr>
         </table>
+        ${businessDetailsHtml}
       </body>
       </html>
     `;
@@ -1068,18 +1071,6 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     await file.makePublic();
     const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${pdfFileName}`;
 
-    // Add business details and logo at the bottom of the email
-    const businessDetailsHtml = `
-      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        ${user.logo ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />` : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`}
-        <strong>${user.companyName || user.name}</strong><br/>
-        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
-        ${user.phone || ''}<br/>
-        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
-      </div>
-      <div style="height:40px;"></div>
-    `;
-
     // Add PDF URL to the email body
     const pdfUrlHtml = `<div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>`;
 
@@ -1126,7 +1117,6 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
-                <tr><td>${businessDetailsHtml}</td></tr>
               </table>
             </td>
           </tr>
