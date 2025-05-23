@@ -114,10 +114,22 @@ exports.sendInvoiceEmail = functions.firestore
         return parseFloat(amount).toFixed(2);
       };
 
-      // Replace the logoHtml logic in the invoice email HTML with the following:
-      const logoHtml = logoImage
-        ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-        : user.logo
+      // --- Improved logo logic for all invoice-related emails ---
+      let logoImageInvoice = null;
+      if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+        try {
+          const response = await fetch(user.logo);
+          const buffer = await response.buffer();
+          if (buffer.length < 20000) { // Only use base64 if image is <20KB
+            logoImageInvoice = 'data:image/png;base64,' + buffer.toString('base64');
+          }
+        } catch (e) {
+          logoImageInvoice = null;
+        }
+      }
+      const logoHtmlInvoice = logoImageInvoice
+        ? `<img src="${logoImageInvoice}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+        : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
           ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
           : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
 
@@ -144,7 +156,7 @@ exports.sendInvoiceEmail = functions.firestore
                       <table width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
                           <td valign="top" width="60" style="padding-right:20px;">
-                            ${logoHtml}
+                            ${logoHtmlInvoice}
                           </td>
                           <td valign="top">
                             <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
@@ -526,10 +538,21 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       if (!amount || isNaN(amount)) return '0.00';
       return parseFloat(amount).toFixed(2);
     };
-    const logoImage = null;
-    const logoHtml = logoImage
-      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : user.logo
+    let logoImageReminder = null;
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      try {
+        const response = await fetch(user.logo);
+        const buffer = await response.buffer();
+        if (buffer.length < 20000) {
+          logoImageReminder = 'data:image/png;base64,' + buffer.toString('base64');
+        }
+      } catch (e) {
+        logoImageReminder = null;
+      }
+    }
+    const logoHtmlReminder = logoImageReminder
+      ? `<img src="${logoImageReminder}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+      : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
         ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
         : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
@@ -538,7 +561,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     // Fix logo centering in businessDetailsHtml for both update and reminder emails
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
+        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtmlReminder}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -865,17 +888,22 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       return 'data:image/png;base64,' + buffer.toString('base64');
     }
     
-    let logoImage = null;
+    // --- Improved logo logic for update notification email ---
+    let logoImageUpdate = null;
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
-        logoImage = await urlToBase64(user.logo);
+        const response = await fetch(user.logo);
+        const buffer = await response.buffer();
+        if (buffer.length < 20000) {
+          logoImageUpdate = 'data:image/png;base64,' + buffer.toString('base64');
+        }
       } catch (e) {
-        logoImage = null;
+        logoImageUpdate = null;
       }
     }
-    const logoHtml = logoImage
-      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : user.logo
+    const logoHtmlUpdate = logoImageUpdate
+      ? `<img src="${logoImageUpdate}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+      : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
         ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
         : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     
@@ -909,7 +937,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     // Add business details HTML for update notification (use table for logo centering)
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtml}</td></tr></table>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlUpdate}</td></tr></table>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -920,7 +948,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     `;
     
     // Generate PDF buffer
-    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
+    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage: logoImageUpdate });
 
     // Insert business details and PDF URL at the bottom of the email
     const updateHtml = `
