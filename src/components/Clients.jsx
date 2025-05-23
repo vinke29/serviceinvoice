@@ -876,6 +876,15 @@ function Clients() {
             setShowForm(false)
             setEditingClient(null)
           }}
+          scheduledInvoicesCount={
+            editingClient
+              ? invoices.filter(
+                  inv =>
+                    inv.clientId === editingClient.id &&
+                    inv.status === 'scheduled'
+                ).length
+              : 0
+          }
         />
       </Drawer>
 
