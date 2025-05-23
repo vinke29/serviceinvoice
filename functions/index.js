@@ -546,6 +546,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       </div>
       <div style="height:40px;"></div>
     `;
+    // Move businessDetailsHtml outside the main card in reminderHtml
     const reminderHtml = `
       <!DOCTYPE html>
       <html lang="en">
@@ -585,15 +586,11 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
-                <tr>
-                  <td style="padding:0 40px 32px 40px;">
-                    ${businessDetailsHtml}
-                  </td>
-                </tr>
               </table>
             </td>
           </tr>
         </table>
+        ${businessDetailsHtml}
       </body>
       </html>
     `;
