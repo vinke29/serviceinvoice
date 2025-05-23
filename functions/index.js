@@ -1103,7 +1103,7 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
         ${user.phone || ''}<br/>
         <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
       </div>
-      <div style="height:16px;"></div>
+      <div style="height:0px;"></div>
     `;
 
     const emailHtml = `
