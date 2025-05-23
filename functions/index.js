@@ -115,31 +115,9 @@ exports.sendInvoiceEmail = functions.firestore
       };
 
       // --- Improved logo logic for all invoice-related emails ---
-      let logoImageInvoice = null;
       let logoHtmlInvoice = '';
       if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-        try {
-          console.log('[LOGO FETCH] Trying to fetch logo for invoice email:', user.logo);
-          const response = await fetch(user.logo);
-          if (!response.ok) {
-            console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
-          } else {
-            const buffer = await response.buffer();
-            console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
-            if (buffer.length < 20000) {
-              logoImageInvoice = 'data:image/png;base64,' + buffer.toString('base64');
-              console.log('[LOGO FETCH] Successfully converted logo to base64.');
-            } else {
-              console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
-            }
-          }
-        } catch (e) {
-          console.error('[LOGO FETCH] Error fetching logo:', e);
-          logoImageInvoice = null;
-        }
-      }
-      if (logoImageInvoice) {
-        logoHtmlInvoice = `<img src="${logoImageInvoice}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+        logoHtmlInvoice = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
       } else {
         logoHtmlInvoice = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
       }
@@ -549,31 +527,9 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       if (!amount || isNaN(amount)) return '0.00';
       return parseFloat(amount).toFixed(2);
     };
-    let logoImageReminder = null;
     let logoHtmlReminder = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      try {
-        console.log('[LOGO FETCH] Trying to fetch logo for reminder email:', user.logo);
-        const response = await fetch(user.logo);
-        if (!response.ok) {
-          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
-        } else {
-          const buffer = await response.buffer();
-          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
-          if (buffer.length < 20000) {
-            logoImageReminder = 'data:image/png;base64,' + buffer.toString('base64');
-            console.log('[LOGO FETCH] Successfully converted logo to base64.');
-          } else {
-            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
-          }
-        }
-      } catch (e) {
-        console.error('[LOGO FETCH] Error fetching logo:', e);
-        logoImageReminder = null;
-      }
-    }
-    if (logoImageReminder) {
-      logoHtmlReminder = `<img src="${logoImageReminder}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+      logoHtmlReminder = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
     } else {
       logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
@@ -911,31 +867,9 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     }
     
     // --- Improved logo logic for update notification email ---
-    let logoImageUpdate = null;
     let logoHtmlUpdate = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      try {
-        console.log('[LOGO FETCH] Trying to fetch logo for update notification:', user.logo);
-        const response = await fetch(user.logo);
-        if (!response.ok) {
-          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
-        } else {
-          const buffer = await response.buffer();
-          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
-          if (buffer.length < 20000) {
-            logoImageUpdate = 'data:image/png;base64,' + buffer.toString('base64');
-            console.log('[LOGO FETCH] Successfully converted logo to base64.');
-          } else {
-            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
-          }
-        }
-      } catch (e) {
-        console.error('[LOGO FETCH] Error fetching logo:', e);
-        logoImageUpdate = null;
-      }
-    }
-    if (logoImageUpdate) {
-      logoHtmlUpdate = `<img src="${logoImageUpdate}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+      logoHtmlUpdate = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
     } else {
       logoHtmlUpdate = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
@@ -1148,31 +1082,9 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
       </tr>`
     ).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#888;">No invoice details available.</td></tr>`;
 
-    let logoImageDelete = null;
     let logoHtmlDelete = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      try {
-        console.log('[LOGO FETCH] Trying to fetch logo for delete notification:', user.logo);
-        const response = await fetch(user.logo);
-        if (!response.ok) {
-          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
-        } else {
-          const buffer = await response.buffer();
-          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
-          if (buffer.length < 20000) {
-            logoImageDelete = 'data:image/png;base64,' + buffer.toString('base64');
-            console.log('[LOGO FETCH] Successfully converted logo to base64.');
-          } else {
-            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
-          }
-        }
-      } catch (e) {
-        console.error('[LOGO FETCH] Error fetching logo:', e);
-        logoImageDelete = null;
-      }
-    }
-    if (logoImageDelete) {
-      logoHtmlDelete = `<img src="${logoImageDelete}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`;
+      logoHtmlDelete = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`;
     } else {
       logoHtmlDelete = `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
