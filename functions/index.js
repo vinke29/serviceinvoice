@@ -116,22 +116,23 @@ exports.sendInvoiceEmail = functions.firestore
 
       // --- Improved logo logic for all invoice-related emails ---
       let logoImageInvoice = null;
+      let logoHtmlInvoice = '';
       if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
         try {
           const response = await fetch(user.logo);
           const buffer = await response.buffer();
-          if (buffer.length < 20000) { // Only use base64 if image is <20KB
+          if (buffer.length < 20000) {
             logoImageInvoice = 'data:image/png;base64,' + buffer.toString('base64');
           }
         } catch (e) {
           logoImageInvoice = null;
         }
       }
-      const logoHtmlInvoice = logoImageInvoice
-        ? `<img src="${logoImageInvoice}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-        : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
-          ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-          : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+      if (logoImageInvoice) {
+        logoHtmlInvoice = `<img src="${logoImageInvoice}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+      } else {
+        logoHtmlInvoice = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+      }
 
       const emailHtml = `
         <!DOCTYPE html>
@@ -539,6 +540,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       return parseFloat(amount).toFixed(2);
     };
     let logoImageReminder = null;
+    let logoHtmlReminder = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
         const response = await fetch(user.logo);
@@ -550,11 +552,11 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
         logoImageReminder = null;
       }
     }
-    const logoHtmlReminder = logoImageReminder
-      ? `<img src="${logoImageReminder}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
-        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-        : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    if (logoImageReminder) {
+      logoHtmlReminder = `<img src="${logoImageReminder}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+    } else {
+      logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    }
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
@@ -890,6 +892,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     
     // --- Improved logo logic for update notification email ---
     let logoImageUpdate = null;
+    let logoHtmlUpdate = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
         const response = await fetch(user.logo);
@@ -901,11 +904,11 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
         logoImageUpdate = null;
       }
     }
-    const logoHtmlUpdate = logoImageUpdate
-      ? `<img src="${logoImageUpdate}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http'))
-        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-        : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    if (logoImageUpdate) {
+      logoHtmlUpdate = `<img src="${logoImageUpdate}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+    } else {
+      logoHtmlUpdate = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    }
     
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
@@ -1115,16 +1118,28 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
       </tr>`
     ).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#888;">No invoice details available.</td></tr>`;
 
-    const logoImage = null;
-    const logoHtml = logoImage
-      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-      : user.logo
-        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    let logoImageDelete = null;
+    let logoHtmlDelete = '';
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      try {
+        const response = await fetch(user.logo);
+        const buffer = await response.buffer();
+        if (buffer.length < 20000) {
+          logoImageDelete = 'data:image/png;base64,' + buffer.toString('base64');
+        }
+      } catch (e) {
+        logoImageDelete = null;
+      }
+    }
+    if (logoImageDelete) {
+      logoHtmlDelete = `<img src="${logoImageDelete}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`;
+    } else {
+      logoHtmlDelete = `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    }
 
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
+        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtmlDelete}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
