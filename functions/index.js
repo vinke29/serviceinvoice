@@ -95,26 +95,32 @@ exports.sendInvoiceEmail = functions.firestore
 
       const user = userDoc.data();
 
-      // Check if the invoice has line items, otherwise use the description and amount as a single item
-      const lineItems = invoice.lineItems || [{
-        description: invoice.description,
-        amount: invoice.amount,
-        quantity: 1,
-        rate: invoice.amount
-      }];
-      
-      // Calculate subtotal, tax and total
-      const subtotal = lineItems.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0);
-      const taxRate = invoice.taxRate || 0;
-      const taxAmount = (subtotal * taxRate / 100) || 0;
-      const total = subtotal + taxAmount;
-      
-      // Format currency
-      const formatCurrency = (amount) => {
-        return parseFloat(amount).toFixed(2);
-      };
+      console.log('Data loaded successfully for reminder');
 
-      const emailHtml = `
+      // Define all variables needed for the email template
+      const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
+      const amount = formatCurrency(invoice.totalAmount || invoice.amount);
+      const currency = invoice.currency || '$';
+      
+      // Define format currency helper
+      function formatCurrency(amount) {
+        if (!amount || isNaN(amount)) return '0.00';
+        return parseFloat(amount).toFixed(2);
+      }
+      
+      // Add business details HTML for footer
+      const businessDetailsHtml = `
+        <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+          ${user.logo ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />` : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`}
+          <strong>${user.companyName || user.name}</strong><br/>
+          ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+          ${user.phone || ''}<br/>
+          <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+        </div>
+        <div style="height:40px;"></div>
+      `;
+      
+      const reminderHtml = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -148,7 +154,12 @@ exports.sendInvoiceEmail = functions.firestore
                           <td valign="top">
                             <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
                             <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                            <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
+                            <div style="font-size:13px;color:#333;">
+                              ${(client.street || client.address || '4125 Ponce de Leon') +
+                                (user.city ? ', ' + user.city : ', Coral Gables') +
+                                (user.state ? ', ' + user.state : ', Florida') +
+                                ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146')}
+                            </div>
                             <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
                             <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                             ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
@@ -188,46 +199,16 @@ exports.sendInvoiceEmail = functions.firestore
                       <div style="font-size:15px;font-weight:bold;color:#2c5282;margin-bottom:8px;">BILL TO:</div>
                       <div style="font-size:15px;color:#333;">${client.name}</div>
                       <div style="font-size:13px;color:#333;">
-                        ${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
+                        ${(client.street || client.address || '4125 Ponce de Leon') +
+                          (user.city ? ', ' + user.city : ', Coral Gables') +
+                          (user.state ? ', ' + user.state : ', Florida') +
+                          ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146')}
+                        <br>
+                        ${user.country || 'United States'}<br>
+                        ${user.phone || '+13129530404'}<br>
+                        ${user.email || 'ignacio+72@gmail.com'}<br>
+                        ${user.website || 'https://billienow.com/profile'}
                       </div>
-                      <div style="font-size:13px;color:#333;">${client.email}</div>
-                      <div style="font-size:13px;color:#333;">${client.phone || ''}</div>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style="padding:24px 40px 0 40px;">
-                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-                        <thead>
-                          <tr>
-                            <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Description</th>
-                            <th align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr>
-                            <td style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">${invoice.description}</td>
-                            <td align="right" style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">$${formatCurrency(invoice.amount)}</td>
-                          </tr>
-                          <tr>
-                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">Total:</td>
-                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">$${formatCurrency(invoice.amount)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                  ${user.paymentInstructions ? `
-                  <tr>
-                    <td style="padding:0 40px 24px 40px;">
-                      <div style="margin-top:20px;text-align:center;color:#2c5282;font-size:15px;padding:10px;background:#e6f7ff;border-radius:5px;">
-                        ${user.paymentInstructions}
-                      </div>
-                    </td>
-                  </tr>` : ''}
-                  <tr>
-                    <td style="padding:32px 40px 32px 40px;border-top:1px solid #e2e8f0;text-align:center;background:#f8fafc;border-radius:0 0 8px 8px;">
-                      <div style="font-size:15px;color:#2c5282;margin-bottom:5px;font-weight:bold;">Thank you for your business!</div>
-                      <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                     </td>
                   </tr>
                 </table>
@@ -237,975 +218,78 @@ exports.sendInvoiceEmail = functions.firestore
         </body>
         </html>
       `;
-
-      // Plain text version of the email (important for anti-spam)
-      const textContent = `
-INVOICE
-
-${user.companyName || user.name}
-${user.businessNumber ? `Business Number: ${user.businessNumber}` : ''}
-${user.address || ''}
-${user.phone || ''}
-${user.email}
-
-Invoice #: ${invoice.invoiceNumber}
-Date: ${invoice.date}
-Due Date: ${invoice.dueDate}
-Balance Due: USD $${formatCurrency(total)}
-
-Bill To:
-${client.name}
-${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
-${client.email}
-${client.phone || ''}
-
-${lineItems.map(item => `
-Description: ${item.description}
-Rate: $${formatCurrency(item.rate || item.amount)}
-Quantity: ${item.quantity || 1}
-${taxRate > 0 ? `Tax Rate: ${taxRate}%` : ''}
-Amount: $${formatCurrency(item.amount)}
-`).join('\n')}
-
-Subtotal: $${formatCurrency(subtotal)}
-${taxRate > 0 ? `Tax (${taxRate}%): $${formatCurrency(taxAmount)}` : ''}
-Total: $${formatCurrency(total)}
-${invoice.paymentAmount ? `
-Payment: -$${formatCurrency(invoice.paymentAmount)}
-Balance Due: USD $${formatCurrency(total - invoice.paymentAmount)}
-` : ''}
-
-${user.paymentInstructions ? user.paymentInstructions : ''}
-${user.venmoUsername ? `Venmo: @${user.venmoUsername}` : ''}
-${invoice.paymentLink ? `Pay Now: ${invoice.paymentLink}` : ''}
-${user.lateFeePolicy ? user.lateFeePolicy : ''}
-
-Thanks for your business!
-This is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.
-      `;
-
-      // Anti-spam measures:
-      // 1. Use a verified sender domain (billienowcontact@gmail.com)
-      // 2. Set proper from name to maintain brand recognition
-      // 3. Add reply-to header with the user's email
-      // 4. Add proper email categories and headers
-      // 5. Include unsubscribe link (required by CAN-SPAM Act)
-      // 6. Include both HTML and plain text versions
-      // 7. Add proper DMARC-friendly headers
       
       const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-
+      const fromName = `${user.name || senderName} via BillieNow`;
       const msg = {
         to: client.email,
         from: {
           email: VERIFIED_SENDER,
-          name: `${user.name || user.companyName || 'Your Service Provider'} via BillieNow`
+          name: fromName
         },
         replyTo: user.email,
-        bcc: user.bccEmail || user.email, // BCC the user's specified BCC email or their own email
-        subject: `Invoice #${invoice.invoiceNumber} from ${user.name || 'Your Service Provider'}`,
-        text: textContent,
-        html: emailHtml,
-        categories: ['invoice', 'transactional']
+        subject: `Invoice #${invoice.invoiceNumber}`,
+        text: `Dear ${client.name},\n\nPlease find attached your invoice #${invoice.invoiceNumber} for ${currency}${amount}. The invoice is due on ${new Date(invoice.dueDate).toLocaleDateString()}.\n\nRegards,\n${senderName}`,
+        html: reminderHtml,
+        attachments: [
+          {
+            content: pdfBuffer.toString('base64'),
+            filename: `Invoice_${invoice.invoiceNumber}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment'
+          }
+        ]
       };
 
-      await sgMail.send(msg);
-      console.log('Email sent successfully for invoice:', invoiceId, '- Anti-spam measures applied');
-      
-      // Update the invoice to mark email as sent and log activity
-      await snap.ref.update({
-        emailSent: true,
-        emailSentAt: admin.firestore.FieldValue.serverTimestamp(),
-        activity: admin.firestore.FieldValue.arrayUnion({
-          type: 'invoice_sent',
-          stage: 'Invoice Sent',
-          date: new Date().toISOString()
-        })
-      });
-
-      return null;
-    } catch (error) {
-      console.error('Error sending invoice email:', error);
-      return null;
-    }
-  });
-
-// Daily function to generate recurring invoices
-exports.generateRecurringInvoices = functions.pubsub
-  .schedule('0 0 * * *') // Run at midnight every day
-  .timeZone('UTC')
-  .onRun(async (context) => {
-    try {
-      const db = admin.firestore();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Get all active clients with recurring billing
-      const clientsSnapshot = await db.collectionGroup('clients')
-        .where('status', '==', 'active')
-        .where('billingFrequency', 'in', ['weekly', 'monthly', 'quarterly', 'biannually', 'annually'])
-        .get();
-
-      const processedClients = new Set();
-      const results = [];
-
-      for (const clientDoc of clientsSnapshot.docs) {
-        const client = clientDoc.data();
-        const userId = clientDoc.ref.parent.parent.id;
-
-        // Skip if we've already processed this client
-        if (processedClients.has(client.id)) continue;
-        processedClients.add(client.id);
-
-        // Check if client has a next invoice date
-        if (!client.nextInvoiceDate) continue;
-
-        const nextInvoiceDate = new Date(client.nextInvoiceDate);
-        nextInvoiceDate.setHours(0, 0, 0, 0);
-
-        // If next invoice date is today or in the past, generate the invoice
-        if (nextInvoiceDate <= today) {
-          try {
-            // Generate the invoice
-            const invoiceData = {
-              clientId: client.id,
-              clientName: client.name,
-              amount: client.fee || 0,
-              description: `${client.billingFrequency.charAt(0).toUpperCase() + client.billingFrequency.slice(1)} service fee`,
-              billingFrequency: client.billingFrequency,
-              date: today.toISOString().split('T')[0],
-              status: 'pending',
-              isRecurring: true
-            };
-
-            // Add the invoice
-            const invoiceRef = await db.collection('users')
-              .doc(userId)
-              .collection('invoices')
-              .add(invoiceData);
-
-            // Calculate and update next invoice date
-            let nextDate;
-            switch (client.billingFrequency) {
-              case 'weekly':
-                nextDate = new Date(today);
-                nextDate.setDate(nextDate.getDate() + 7);
-                break;
-              case 'monthly':
-                nextDate = new Date(today);
-                nextDate.setMonth(nextDate.getMonth() + 1);
-                break;
-              case 'quarterly':
-                nextDate = new Date(today);
-                nextDate.setMonth(nextDate.getMonth() + 3);
-                break;
-              case 'biannually':
-                nextDate = new Date(today);
-                nextDate.setMonth(nextDate.getMonth() + 6);
-                break;
-              case 'annually':
-                nextDate = new Date(today);
-                nextDate.setFullYear(nextDate.getFullYear() + 1);
-                break;
-            }
-
-            // Update client with next invoice date
-            await clientDoc.ref.update({
-              nextInvoiceDate: nextDate.toISOString().split('T')[0],
-              lastInvoiced: today.toISOString().split('T')[0]
-            });
-
-            results.push({
-              clientId: client.id,
-              invoiceId: invoiceRef.id,
-              status: 'success'
-            });
-          } catch (error) {
-            console.error(`Error generating invoice for client ${client.id}:`, error);
-            results.push({
-              clientId: client.id,
-              status: 'error',
-              error: error.message
-            });
-          }
-        }
-      }
-
-      console.log('Recurring invoice generation results:', results);
-      return null;
-    } catch (error) {
-      console.error('Error in generateRecurringInvoices:', error);
-      throw error;
-    }
-  });
-
-exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
-  try {
-    // Check if the user is authenticated
-    if (!context.auth) {
-      console.error('Authentication failed: No auth context');
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send reminders.');
-    }
-
-    const { userId, invoiceId, clientId } = data;
-    if (!userId || !invoiceId || !clientId) {
-      console.error('Missing parameters:', { userId, invoiceId, clientId });
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
-    }
-
-    console.log('Processing reminder request:', { 
-      userId, 
-      invoiceId, 
-      clientId, 
-      authUid: context.auth.uid 
-    });
-
-    // Verify the user exists and has access to the invoice
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'User not found.');
-    }
-
-    // Verify the authenticated user matches the userId
-    if (context.auth.uid !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'You do not have permission to send reminders for this user.');
-    }
-
-    // Check if invoice exists
-    const invoiceDoc = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
-    if (!invoiceDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Invoice not found.');
-    }
-
-    // Get client data
-    const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Client not found.');
-    }
-
-    // Initialize the SendGrid client with API key
-    sgMail.setApiKey(functions.config().sendgrid.key);
-    console.log('SendGrid initialized');
-
-    const invoice = invoiceDoc.data();
-    const client = clientDoc.data();
-    const user = userDoc.data();
-
-    console.log('Data loaded successfully for reminder');
-
-    // Construct the email
-    const formatCurrency = (amount) => {
-      if (!amount || isNaN(amount)) return '0.00';
-      return parseFloat(amount).toFixed(2);
-    };
-    const logoHtml = user.logo
-      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
-          ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
-        </div>`;
-    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
-    const currency = invoice.currency || '$';
-    const reminderHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Payment Reminder for Invoice #${invoice.invoiceNumber}</title>
-      </head>
-      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
-                <tr>
-                  <td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
-                    <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">PAYMENT REMINDER</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:32px 40px 0 40px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td valign="top" width="60" style="padding-right:20px;">
-                          ${logoHtml}
-                        </td>
-                        <td valign="top">
-                          <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
-                          <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                          <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
-                          <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-                          <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-                          ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:24px 40px 0 40px;">
-                    <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
-                    <p style="font-size:15px;color:#333;">This is a friendly reminder that the following invoice is due:</p>
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-                      <tr style="background-color: #f2f2f2;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
-                      </tr>
-                    </table>
-                    <p style="font-size:15px;color:#333;">Please make payment at your earliest convenience.</p>
-                    <p style="font-size:15px;color:#333;">Thank you for your business!</p>
-                    <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-    const fromName = `${user.name || senderName} via BillieNow`;
-    const msg = {
-      to: client.email,
-      from: {
-        email: VERIFIED_SENDER,
-        name: fromName
-      },
-      replyTo: user.email,
-      subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
-      text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${currency}${amount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${senderName}`,
-      html: reminderHtml
-    };
-
-    try {
-      await sgMail.send(msg);
-      // Log reminder activity
-      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
-        activity: admin.firestore.FieldValue.arrayUnion({
-          type: 'reminder_sent',
-          stage: 'Reminder Sent',
-          date: new Date().toISOString()
-        })
-      });
-      return { success: true, message: 'Reminder sent successfully' };
-    } catch (error) {
-      console.error('Error sending reminder:', error);
-      
-      // Log detailed error information
-      if (error.response && error.response.body) {
-        console.log('SendGrid error details:', error.response.body);
-      }
-      
-      // Check if this is a SendGrid credits exceeded error
-      if (error.code === 401 && 
-          error.response && 
-          error.response.body && 
-          error.response.body.errors && 
-          error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
-        throw new functions.https.HttpsError(
-          'resource-exhausted', 
-          'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
-        );
-      }
-      
-      // For general SendGrid authentication errors
-      if (error.code === 401) {
-        throw new functions.https.HttpsError(
-          'unauthenticated', 
-          'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
-        );
-      }
-      
-      throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Function error:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
-  }
-});
-
-exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => {
-  try {
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send escalations.');
-    }
-    const { userId, invoiceId, clientId } = data;
-    if (!userId || !invoiceId || !clientId) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
-    }
-    // Verify user
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    if (!userDoc.exists) throw new functions.https.HttpsError('not-found', 'User not found.');
-    if (context.auth.uid !== userId) throw new functions.https.HttpsError('permission-denied', 'You do not have permission to send escalations for this user.');
-    // Invoice and client
-    const invoiceDoc = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
-    if (!invoiceDoc.exists) throw new functions.https.HttpsError('not-found', 'Invoice not found.');
-    const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
-    if (!clientDoc.exists) throw new functions.https.HttpsError('not-found', 'Client not found.');
-    // Agent config for escalation template and threshold
-    const agentConfigDoc = await admin.firestore().collection('users').doc(userId).collection('agentConfig').doc('main').get();
-    const agentConfig = agentConfigDoc.exists ? agentConfigDoc.data() : {};
-    const escalationTemplate = (agentConfig.templates && agentConfig.templates.escalation) ||
-      'Dear {clientName}, your invoice #{invoiceNumber} for ${amount} is now {daysOverdue} days overdue. This is our final notice before we take further action. Please contact us immediately to avoid further consequences.';
-    const escalationThreshold = agentConfig.escalationDays || 14;
-    // Email setup
-    sgMail.setApiKey(functions.config().sendgrid.key);
-    const invoice = invoiceDoc.data();
-    const client = clientDoc.data();
-    const user = userDoc.data();
-    const now = new Date();
-    const daysOverdue = Math.max(0, Math.floor((now - new Date(invoice.dueDate)) / (1000 * 60 * 60 * 24)));
-    const amount = (invoice.totalAmount || invoice.amount || 0).toFixed(2);
-    const currency = invoice.currency || '$';
-    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-    // Choose message based on threshold
-    let textBody, escalationHtml;
-    if (daysOverdue < escalationThreshold) {
-      // Soft, generic escalation message
-      textBody = `Dear ${client.name},\n\nYour invoice #${invoice.invoiceNumber} for ${currency}${amount} is now overdue and requires your immediate attention. This is our final notice before we take further action. Please contact us as soon as possible to resolve this matter.\n\nRegards,\n${senderName}`;
-      escalationHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Escalation Notice for Invoice #${invoice.invoiceNumber}</title></head>
-        <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
-            <tr><td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
-                <tr><td style="background:#b91c1c;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
-                  <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">ESCALATION NOTICE</span>
-                </td></tr>
-                <tr><td style="padding:32px 40px 0 40px;">
-                  <div style="font-size:16px;color:#b91c1c;font-weight:bold;">${senderName}</div>
-                  <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
-                  <p style="font-size:15px;color:#333;">Your invoice <b>#${invoice.invoiceNumber}</b> for <b>${currency}${amount}</b> is now overdue and requires your immediate attention. This is our final notice before we take further action. Please contact us as soon as possible to resolve this matter.</p>
-                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-                    <tr style="background-color: #f2f2f2;"><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th></tr>
-                    <tr><td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td><td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td><td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td></tr>
-                  </table>
-                  <p style="font-size:15px;color:#b91c1c;font-weight:bold;">This is our final notice before we take further action.</p>
-                  <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </body></html>`;
-    } else {
-      // Normal escalation template (may mention days overdue)
-      textBody = escalationTemplate
-        .replace('{clientName}', client.name)
-        .replace('{invoiceNumber}', invoice.invoiceNumber)
-        .replace('{amount}', `${currency}${amount}`)
-        .replace('{dueDate}', new Date(invoice.dueDate).toLocaleDateString())
-        .replace('{daysOverdue}', daysOverdue);
-      escalationHtml = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Escalation Notice for Invoice #${invoice.invoiceNumber}</title></head>
-        <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
-          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
-            <tr><td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
-                <tr><td style="background:#b91c1c;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
-                  <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">ESCALATION NOTICE</span>
-                </td></tr>
-                <tr><td style="padding:32px 40px 0 40px;">
-                  <div style="font-size:16px;color:#b91c1c;font-weight:bold;">${senderName}</div>
-                  <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
-                  <p style="font-size:15px;color:#333;">${textBody}</p>
-                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-                    <tr style="background-color: #f2f2f2;"><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th><th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th></tr>
-                    <tr><td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td><td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td><td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td></tr>
-                  </table>
-                  <p style="font-size:15px;color:#b91c1c;font-weight:bold;">This is our final notice before we take further action.</p>
-                  <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
-                </td></tr>
-              </table>
-            </td></tr>
-          </table>
-        </body></html>`;
-    }
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-    const fromName = `${user.name || senderName} via BillieNow`;
-    const msg = {
-      to: client.email,
-      from: { email: VERIFIED_SENDER, name: fromName },
-      replyTo: user.email,
-      subject: `Escalation Notice for Invoice #${invoice.invoiceNumber}`,
-      text: textBody,
-      html: escalationHtml
-    };
-    try {
-      await sgMail.send(msg);
-      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
-        activity: admin.firestore.FieldValue.arrayUnion({
-          type: 'escalation_sent',
-          stage: 'Escalation Sent',
-          date: new Date().toISOString()
-        })
-      });
-      return { success: true, message: 'Escalation sent successfully' };
-    } catch (error) {
-      if (error.response && error.response.body) {
-        console.log('SendGrid error details:', error.response.body);
-      }
-      if (error.code === 401 && error.response && error.response.body && error.response.body.errors && error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
-        throw new functions.https.HttpsError('resource-exhausted', 'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.');
-      }
-      if (error.code === 401) {
-        throw new functions.https.HttpsError('unauthenticated', 'Email service error: Your email service authentication failed. Please check your SendGrid API key.');
-      }
-      throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
-    }
-  } catch (error) {
-    if (error instanceof functions.https.HttpsError) throw error;
-    throw new functions.https.HttpsError('internal', error.message || 'Unknown error');
-  }
-});
-
-exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, context) => {
-  try {
-    // Check if the user is authenticated
-    if (!context.auth) {
-      console.error('Authentication failed: No auth context');
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to send update notifications.');
-    }
-
-    const { userId, invoiceId, clientId, changes } = data;
-    if (!userId || !invoiceId || !clientId) {
-      console.error('Missing parameters:', { userId, invoiceId, clientId });
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters.');
-    }
-
-    console.log('Processing invoice update notification request:', { 
-      userId, 
-      invoiceId, 
-      clientId,
-      changes,
-      authUid: context.auth.uid 
-    });
-
-    // Verify the user exists and has access to the invoice
-    const userDoc = await admin.firestore().collection('users').doc(userId).get();
-    if (!userDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'User not found.');
-    }
-
-    // Verify the authenticated user matches the userId
-    if (context.auth.uid !== userId) {
-      throw new functions.https.HttpsError('permission-denied', 'You do not have permission to send notifications for this user.');
-    }
-
-    // Check if invoice exists
-    const invoiceDoc = await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).get();
-    if (!invoiceDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Invoice not found.');
-    }
-
-    // Get client data
-    const clientDoc = await admin.firestore().collection('users').doc(userId).collection('clients').doc(clientId).get();
-    if (!clientDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Client not found.');
-    }
-
-    // Initialize the SendGrid client with API key
-    sgMail.setApiKey(functions.config().sendgrid.key);
-    console.log('SendGrid initialized');
-
-    const invoice = invoiceDoc.data();
-    const client = clientDoc.data();
-    const user = userDoc.data();
-
-    console.log('Data loaded successfully for update notification');
-
-    // Construct the email
-    const formatCurrency = (amount) => {
-      if (!amount || isNaN(amount)) return '0.00';
-      return parseFloat(amount).toFixed(2);
-    };
-    
-    // Helper to convert image URL to base64 data URL
-    async function urlToBase64(url) {
-      const response = await fetch(url);
-      const buffer = await response.buffer();
-      return 'data:image/png;base64,' + buffer.toString('base64');
-    }
-    
-    let logoImage = null;
-    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
-        logoImage = await urlToBase64(user.logo);
-      } catch (e) {
-        console.warn('Failed to convert logo URL to base64:', e);
-        logoImage = null;
-      }
-    } else if (user.logo) {
-      logoImage = user.logo;
-    }
-    
-    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
-    const currency = invoice.currency || '$';
-    
-    const changesHtml = changes && changes.length > 0 ? 
-      `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-        <tr style="background-color: #f2f2f2;">
-          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Change</th>
-          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Previous Value</th>
-          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">New Value</th>
-        </tr>
-        ${changes.split('; ').map(change => {
-          const parts = change.split(' changed from ');
-          if (parts.length === 2) {
-            const [field, valueChange] = parts;
-            const [oldValue, newValue] = valueChange.split(' to ');
-            return `<tr>
-              <td style="padding: 10px; border: 1px solid #ddd;">${field}</td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${oldValue}</td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${newValue}</td>
-            </tr>`;
-          }
-          return `<tr><td style="padding: 10px; border: 1px solid #ddd;" colspan="3">${change}</td></tr>`;
-        }).join('')}
-      </table>` : 
-      '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
-    
-    // PDF generation logic
-    const fonts = {
-      Roboto: {
-        normal: path.join(__dirname, 'fonts/Roboto-Regular.ttf'),
-        bold: path.join(__dirname, 'fonts/Roboto-Bold.ttf'),
-        italics: path.join(__dirname, 'fonts/Roboto-Italic.ttf'),
-        bolditalics: path.join(__dirname, 'fonts/Roboto-BoldItalic.ttf')
-      }
-    };
-    const printer = new PdfPrinter(fonts);
-    
-    // Create a more professional PDF document that matches the one from the invoice drawer
-    const docDefinition = {
-      pageSize: 'A4',
-      pageMargins: [40, 40, 40, 60],
-      content: [
-        // Header with company info
-        {
-          columns: [
-            // Left column - company info with logo
-            {
-              width: '50%',
-              stack: [
-                // Include logo if available
-                logoImage ? {
-                  image: logoImage,
-                  width: 150,
-                  margin: [0, 0, 0, 10]
-                } : null,
-                { text: user.companyName || user.name || 'rivink', style: 'companyName' },
-                { text: `Business Number: ${user.taxId || '676457647'}`, style: 'companyDetail' },
-                { text: (user.street || user.address || '4125 Ponce de Leon') + 
-                    (user.city ? ', ' + user.city : ', Coral Gables') + 
-                    (user.state ? ', ' + user.state : ', Florida') + 
-                    ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146'), 
-                  style: 'companyDetail' 
-                },
-                { text: user.country || 'United States', style: 'companyDetail' },
-                { text: user.phone || '+13129530404', style: 'companyDetail' },
-                { text: user.email || 'ignacio+72@gmail.com', style: 'companyDetail' },
-                { text: user.website || 'https://billienow.com/profile', style: 'companyDetail' }
-              ].filter(item => item !== null) // Filter out null items (if no logo)
-            },
-            // Right column - invoice info
-            {
-              width: '50%',
-              stack: [
-                { text: 'INVOICE', style: 'invoiceTitle' },
-                { text: invoice.invoiceNumber, style: 'invoiceNumber', margin: [0, 5, 0, 15] },
-                { 
-                  columns: [
-                    { text: 'DATE', style: 'label', width: '50%' },
-                    { text: invoice.date, style: 'value', width: '50%' }
-                  ]
-                },
-                { 
-                  columns: [
-                    { text: 'DUE DATE', style: 'label', width: '50%' },
-                    { text: invoice.dueDate, style: 'value', width: '50%' }
-                  ],
-                  margin: [0, 5, 0, 0]
-                },
-                { 
-                  columns: [
-                    { text: 'BALANCE DUE', style: 'label', width: '50%' },
-                    { text: `USD $${formatCurrency(invoice.amount)}`, style: 'value', width: '50%' }
-                  ],
-                  margin: [0, 5, 0, 0]
-                }
-              ],
-              alignment: 'right'
-            }
-          ],
-          margin: [0, 0, 0, 30]
-        },
+        await sgMail.send(msg);
+        // Log update notification activity
+        await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
+          activity: admin.firestore.FieldValue.arrayUnion({
+            type: 'reminder_sent',
+            stage: 'Reminder Sent',
+            date: new Date().toISOString()
+          })
+        });
+        return { success: true, message: 'Invoice reminder sent successfully' };
+      } catch (error) {
+        console.error('Error sending update notification:', error);
         
-        // Bill to section
-        {
-          stack: [
-            { text: 'BILL TO', style: 'sectionHeader' },
-            { text: client.name, style: 'clientName', margin: [0, 5, 0, 0] },
-            { text: client.street || client.address || '4299 Northwest 36th Street', style: 'clientDetail' },
-            { text: (client.city || 'Miami Springs') + ', ' + (client.state || 'Florida') + ', ' + (client.postalCode || '33166'), style: 'clientDetail' },
-            { text: client.country || 'United States', style: 'clientDetail' },
-            { text: client.email || '', style: 'clientDetail' },
-            { text: client.phone || '', style: 'clientDetail' }
-          ],
-          margin: [0, 0, 0, 30]
-        },
-        
-        // Line items table
-        {
-          table: {
-            headerRows: 1,
-            widths: ['*', 'auto', 'auto', 'auto'],
-            body: [
-              // Header row
-              [
-                { text: 'DESCRIPTION', style: 'tableHeader' }, 
-                { text: 'RATE', style: 'tableHeader', alignment: 'right' },
-                { text: 'QTY', style: 'tableHeader', alignment: 'right' },
-                { text: 'AMOUNT', style: 'tableHeader', alignment: 'right' }
-              ],
-              // Line item row
-              [
-                { text: invoice.description || 'raaer', style: 'tableCell' },
-                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' },
-                { text: '1', style: 'tableCell', alignment: 'right' },
-                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' }
-              ]
-            ]
-          },
-          layout: {
-            hLineWidth: function(i, node) {
-              return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0;
-            },
-            vLineWidth: function() {
-              return 0;
-            },
-            hLineColor: function() {
-              return '#EEEEEE';
-            }
-          }
-        },
-        
-        // Subtotal
-        {
-          columns: [
-            { width: '*', text: '' },
-            {
-              width: 'auto',
-              table: {
-                body: [
-                  [
-                    { text: 'SUBTOTAL', style: 'summaryLabel', alignment: 'right' },
-                    { text: `$${formatCurrency(invoice.amount)}`, style: 'summaryValue', alignment: 'right' }
-                  ],
-                  [
-                    { text: 'TOTAL', style: 'totalLabel', alignment: 'right' },
-                    { text: `$${formatCurrency(invoice.amount)}`, style: 'totalValue', alignment: 'right' }
-                  ]
-                ]
-              },
-              layout: 'noBorders',
-              margin: [0, 15, 0, 0]
-            }
-          ]
+        // Log detailed error information
+        if (error.response && error.response.body) {
+          console.log('SendGrid error details:', error.response.body);
         }
-      ],
-      styles: {
-        companyName: { fontSize: 20, bold: true, color: '#2c5282' },
-        companyDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
-        invoiceTitle: { fontSize: 30, bold: true, color: '#3b82f6' },
-        invoiceNumber: { fontSize: 14, bold: true },
-        label: { fontSize: 10, color: '#666666', bold: true },
-        value: { fontSize: 12, color: '#333333' },
-        sectionHeader: { fontSize: 12, bold: true, color: '#333333' },
-        clientName: { fontSize: 14, bold: true, color: '#333333' },
-        clientDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
-        tableHeader: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
-        tableCell: { fontSize: 10, color: '#333333', margin: [0, 5, 0, 5] },
-        summaryLabel: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
-        summaryValue: { fontSize: 10, color: '#333333', margin: [10, 5, 0, 5] },
-        totalLabel: { fontSize: 12, bold: true, color: '#333333', margin: [0, 5, 0, 5] },
-        totalValue: { fontSize: 12, bold: true, color: '#333333', margin: [10, 5, 0, 5] }
-      },
-      defaultStyle: {
-        font: 'Roboto'
-      }
-    };
-    
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    const pdfChunks = [];
-    pdfDoc.on('data', chunk => pdfChunks.push(chunk));
-    pdfDoc.end();
-    await new Promise(resolve => pdfDoc.on('end', resolve));
-    const pdfBuffer = Buffer.concat(pdfChunks);
-
-    // Upload PDF to Firebase Storage
-    const storage = new Storage();
-    const bucketName = admin.app().options.storageBucket;
-    const bucket = storage.bucket(bucketName);
-    const pdfFileName = `invoices/${userId}/invoice_${invoiceId}_updated.pdf`;
-    const file = bucket.file(pdfFileName);
-    await file.save(pdfBuffer, { contentType: 'application/pdf' });
-    await file.makePublic();
-    const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${pdfFileName}`;
-
-    // Add business details and logo at the bottom of the email
-    const businessDetailsHtml = `
-      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        ${user.logo ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />` : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`}
-        <strong>${user.companyName || user.name}</strong><br/>
-        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
-        ${user.phone || ''}<br/>
-        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
-      </div>
-      <div style="height:40px;"></div>
-    `;
-
-    // Add PDF URL to the email body
-    const pdfUrlHtml = `<div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>`;
-
-    // Insert business details and PDF URL at the bottom of the email
-    const updateHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Invoice #${invoice.invoiceNumber} Updated</title>
-      </head>
-      <body style="margin:0;padding:0;background:#f5f6fa;font-family:Arial,sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f6fa;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin:40px 0;">
-                <tr>
-                  <td style="background:#3b82f6;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
-                    <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">INVOICE UPDATED</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:32px 40px 0 40px;">
-                    <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
-                    <p style="font-size:15px;color:#333;">This is to inform you that your invoice #${invoice.invoiceNumber} has been updated.</p>
-                    <h3 style="font-size:16px;color:#333;margin-top:20px;">What has changed:</h3>
-                    ${changesHtml}
-                    <h3 style="font-size:16px;color:#333;margin-top:20px;">Updated Invoice Summary:</h3>
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
-                      <tr style="background-color: #f2f2f2;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Invoice #</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Amount</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Due Date</th>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${invoice.invoiceNumber}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${currency}${amount}</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
-                      </tr>
-                    </table>
-                    <p style="font-size:15px;color:#333;">A revised copy of your invoice has been attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
-                    ${pdfUrlHtml}
-                    <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
-                  </td>
-                </tr>
-                <tr><td>${businessDetailsHtml}</td></tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-    
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-    const fromName = `${user.name || senderName} via BillieNow`;
-    const msg = {
-      to: client.email,
-      from: {
-        email: VERIFIED_SENDER,
-        name: fromName
-      },
-      replyTo: user.email,
-      subject: `Invoice #${invoice.invoiceNumber} Updated`,
-      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nYou can also view or download the updated invoice here: ${pdfUrl}\n\nRegards,\n${senderName}`,
-      html: updateHtml,
-      attachments: [
-        {
-          content: pdfBuffer.toString('base64'),
-          filename: `Invoice_${invoice.invoiceNumber}_Updated.pdf`,
-          type: 'application/pdf',
-          disposition: 'attachment'
+        
+        // Check if this is a SendGrid credits exceeded error
+        if (error.code === 401 && 
+            error.response && 
+            error.response.body && 
+            error.response.body.errors && 
+            error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
+          throw new functions.https.HttpsError(
+            'resource-exhausted', 
+            'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
+          );
         }
-      ]
-    };
-
-    try {
-      await sgMail.send(msg);
-      // Log update notification activity
-      await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
-        activity: admin.firestore.FieldValue.arrayUnion({
-          type: 'update_notification_sent',
-          stage: 'Update Notification Sent',
-          date: new Date().toISOString()
-        })
-      });
-      return { success: true, message: 'Update notification sent successfully' };
+        
+        // For general SendGrid authentication errors
+        if (error.code === 401) {
+          throw new functions.https.HttpsError(
+            'unauthenticated', 
+            'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
+          );
+        }
+        
+        throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
+      }
     } catch (error) {
-      console.error('Error sending update notification:', error);
-      
-      // Log detailed error information
-      if (error.response && error.response.body) {
-        console.log('SendGrid error details:', error.response.body);
+      console.error('Function error:', error);
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
       }
-      
-      // Check if this is a SendGrid credits exceeded error
-      if (error.code === 401 && 
-          error.response && 
-          error.response.body && 
-          error.response.body.errors && 
-          error.response.body.errors.some(err => err.message && err.message.includes('Maximum credits exceeded'))) {
-        throw new functions.https.HttpsError(
-          'resource-exhausted', 
-          'Your email service has reached its sending limit. Please upgrade your SendGrid plan or wait until the next billing cycle.'
-        );
-      }
-      
-      // For general SendGrid authentication errors
-      if (error.code === 401) {
-        throw new functions.https.HttpsError(
-          'unauthenticated', 
-          'Email service error: Your email service authentication failed. Please check your SendGrid API key.'
-        );
-      }
-      
-      throw new functions.https.HttpsError('internal', 'Email service error: ' + (error.message || 'Unknown error'));
+      throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
     }
-  } catch (error) {
-    console.error('Function error:', error);
-    if (error instanceof functions.https.HttpsError) {
-      throw error;
-    }
-    throw new functions.https.HttpsError('unknown', error.message || 'An unknown error occurred');
-  }
-});
+  });
 
 exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, context) => {
   try {
@@ -1234,8 +318,8 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
     if (providedInvoices && Array.isArray(providedInvoices) && providedInvoices.length > 0) {
       invoices = providedInvoices;
     } else {
-      const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
-      const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
+    const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
+    const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
       invoices = invoiceSnaps.map(snap => snap.exists ? snap.data() : null).filter(Boolean);
     }
 
@@ -1354,3 +438,10 @@ exports.logInvoiceUpdate = functions.firestore
     });
     return null;
   });
+
+// Helper to convert image URL to base64 data URL (reuse if already defined)
+async function urlToBase64(url) {
+  const response = await fetch(url);
+  const buffer = await response.buffer();
+  return 'data:image/png;base64,' + buffer.toString('base64');
+}
