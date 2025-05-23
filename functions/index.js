@@ -534,7 +534,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     } else {
       logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
-    // Use the same business details block as update notification
+    // Copy the business details block from update notification
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlReminder}</td></tr></table>
