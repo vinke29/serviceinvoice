@@ -498,9 +498,12 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       if (!amount || isNaN(amount)) return '0.00';
       return parseFloat(amount).toFixed(2);
     };
-    const logoHtml = user.logo
-      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-      : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    const logoImage = null;
+    const logoHtml = logoImage
+      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      : user.logo
+        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
@@ -554,11 +557,15 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
+                <tr>
+                  <td style="padding:0 40px 32px 40px;">
+                    ${businessDetailsHtml}
+                  </td>
+                </tr>
               </table>
             </td>
           </tr>
         </table>
-        ${businessDetailsHtml}
       </body>
       </html>
     `;
@@ -837,12 +844,14 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       try {
         logoImage = await urlToBase64(user.logo);
       } catch (e) {
-        console.warn('Failed to convert logo URL to base64:', e);
         logoImage = null;
       }
-    } else if (user.logo) {
-      logoImage = user.logo;
     }
+    const logoHtml = logoImage
+      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      : user.logo
+        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
@@ -1227,9 +1236,12 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
       </tr>`
     ).join('') : `<tr><td colspan="4" style="padding:12px;text-align:center;color:#888;">No invoice details available.</td></tr>`;
 
-    const logoHtml = user.logo
-      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-      : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    const logoImage = null;
+    const logoHtml = logoImage
+      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      : user.logo
+        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
 
     const emailHtml = `
       <html>
