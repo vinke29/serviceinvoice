@@ -119,12 +119,22 @@ exports.sendInvoiceEmail = functions.firestore
       let logoHtmlInvoice = '';
       if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
         try {
+          console.log('[LOGO FETCH] Trying to fetch logo for invoice email:', user.logo);
           const response = await fetch(user.logo);
-          const buffer = await response.buffer();
-          if (buffer.length < 20000) {
-            logoImageInvoice = 'data:image/png;base64,' + buffer.toString('base64');
+          if (!response.ok) {
+            console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
+          } else {
+            const buffer = await response.buffer();
+            console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
+            if (buffer.length < 20000) {
+              logoImageInvoice = 'data:image/png;base64,' + buffer.toString('base64');
+              console.log('[LOGO FETCH] Successfully converted logo to base64.');
+            } else {
+              console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
+            }
           }
         } catch (e) {
+          console.error('[LOGO FETCH] Error fetching logo:', e);
           logoImageInvoice = null;
         }
       }
@@ -543,12 +553,22 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     let logoHtmlReminder = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
+        console.log('[LOGO FETCH] Trying to fetch logo for reminder email:', user.logo);
         const response = await fetch(user.logo);
-        const buffer = await response.buffer();
-        if (buffer.length < 20000) {
-          logoImageReminder = 'data:image/png;base64,' + buffer.toString('base64');
+        if (!response.ok) {
+          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
+        } else {
+          const buffer = await response.buffer();
+          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
+          if (buffer.length < 20000) {
+            logoImageReminder = 'data:image/png;base64,' + buffer.toString('base64');
+            console.log('[LOGO FETCH] Successfully converted logo to base64.');
+          } else {
+            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
+          }
         }
       } catch (e) {
+        console.error('[LOGO FETCH] Error fetching logo:', e);
         logoImageReminder = null;
       }
     }
@@ -895,12 +915,22 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     let logoHtmlUpdate = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
+        console.log('[LOGO FETCH] Trying to fetch logo for update notification:', user.logo);
         const response = await fetch(user.logo);
-        const buffer = await response.buffer();
-        if (buffer.length < 20000) {
-          logoImageUpdate = 'data:image/png;base64,' + buffer.toString('base64');
+        if (!response.ok) {
+          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
+        } else {
+          const buffer = await response.buffer();
+          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
+          if (buffer.length < 20000) {
+            logoImageUpdate = 'data:image/png;base64,' + buffer.toString('base64');
+            console.log('[LOGO FETCH] Successfully converted logo to base64.');
+          } else {
+            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
+          }
         }
       } catch (e) {
+        console.error('[LOGO FETCH] Error fetching logo:', e);
         logoImageUpdate = null;
       }
     }
@@ -1122,12 +1152,22 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
     let logoHtmlDelete = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
       try {
+        console.log('[LOGO FETCH] Trying to fetch logo for delete notification:', user.logo);
         const response = await fetch(user.logo);
-        const buffer = await response.buffer();
-        if (buffer.length < 20000) {
-          logoImageDelete = 'data:image/png;base64,' + buffer.toString('base64');
+        if (!response.ok) {
+          console.error('[LOGO FETCH] Fetch failed with status:', response.status, response.statusText);
+        } else {
+          const buffer = await response.buffer();
+          console.log('[LOGO FETCH] Buffer size:', buffer.length, 'bytes');
+          if (buffer.length < 20000) {
+            logoImageDelete = 'data:image/png;base64,' + buffer.toString('base64');
+            console.log('[LOGO FETCH] Successfully converted logo to base64.');
+          } else {
+            console.warn('[LOGO FETCH] Logo image too large for base64 embedding.');
+          }
         }
       } catch (e) {
+        console.error('[LOGO FETCH] Error fetching logo:', e);
         logoImageDelete = null;
       }
     }
