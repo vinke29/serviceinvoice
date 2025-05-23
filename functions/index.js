@@ -908,6 +908,19 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       </table>` : 
       '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
     
+    // Add business details HTML for update notification
+    const businessDetailsHtml = `
+      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+        ${logoHtml}
+        <strong>${user.companyName || user.name}</strong><br/>
+        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+        ${user.phone || ''}<br/>
+        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+        ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+      </div>
+      <div style="height:40px;"></div>
+    `;
+    
     // Generate PDF buffer
     const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
 
@@ -957,6 +970,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
             </td>
           </tr>
         </table>
+        ${businessDetailsHtml}
       </body>
       </html>
     `;
