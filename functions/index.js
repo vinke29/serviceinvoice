@@ -499,10 +499,8 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       return parseFloat(amount).toFixed(2);
     };
     const logoHtml = user.logo
-      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
-      : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">
-          ${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}
-        </div>`;
+      ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
@@ -537,16 +535,6 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
                 </tr>
                 <tr>
                   <td style="padding:32px 40px 0 40px;">
-                    <div style="font-size:20px;font-weight:bold;color:#2c5282;">${senderName}</div>
-                    <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
-                    <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
-                    <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
-                    <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
-                    ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:24px 40px 0 40px;">
                     <p style="font-size:16px;color:#333;">Dear ${client.name},</p>
                     <p style="font-size:15px;color:#333;">This is a friendly reminder that the following invoice is due:</p>
                     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; border-collapse: collapse;">
