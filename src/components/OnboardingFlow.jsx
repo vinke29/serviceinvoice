@@ -397,7 +397,7 @@ function OnboardingFlow({ onComplete }) {
   return (
     <div className="relative min-h-screen w-full">
       <div className="fixed inset-0 -z-10 bg-gradient-to-b from-blue-100 via-blue-200 to-blue-500 w-full h-full" />
-      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center mt-8 mb-12 p-8 rounded-2xl shadow-xl bg-white/70">
+      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center mt-16 mb-12 p-8 rounded-2xl shadow-xl bg-white/70">
         {/* Step Counter */}
         {step.showStepCounter && (
           <div className="mb-6 text-blue-700 font-semibold text-lg w-full text-left">
