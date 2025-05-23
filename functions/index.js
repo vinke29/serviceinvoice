@@ -1135,6 +1135,7 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
                   If you have any questions, please contact us at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>.
                 </div>
               </td></tr>
+              <tr><td style="padding-bottom:32px;border-radius:0 0 8px 8px;"></td></tr>
             </table>
           </td></tr>
         </table>
