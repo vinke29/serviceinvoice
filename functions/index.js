@@ -906,10 +906,10 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       </table>` : 
       '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
     
-    // Add business details HTML for update notification
+    // Add business details HTML for update notification (use table for logo centering)
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtml}</div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtml}</td></tr></table>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
