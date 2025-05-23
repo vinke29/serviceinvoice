@@ -95,32 +95,33 @@ exports.sendInvoiceEmail = functions.firestore
 
       const user = userDoc.data();
 
-      console.log('Data loaded successfully for reminder');
-
-      // Define all variables needed for the email template
-      const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-      const amount = formatCurrency(invoice.totalAmount || invoice.amount);
-      const currency = invoice.currency || '$';
+      // Check if the invoice has line items, otherwise use the description and amount as a single item
+      const lineItems = invoice.lineItems || [{
+        description: invoice.description,
+        amount: invoice.amount,
+        quantity: 1,
+        rate: invoice.amount
+      }];
       
-      // Define format currency helper
-      function formatCurrency(amount) {
-        if (!amount || isNaN(amount)) return '0.00';
+      // Calculate subtotal, tax and total
+      const subtotal = lineItems.reduce((total, item) => total + (parseFloat(item.amount) || 0), 0);
+      const taxRate = invoice.taxRate || 0;
+      const taxAmount = (subtotal * taxRate / 100) || 0;
+      const total = subtotal + taxAmount;
+      
+      // Format currency
+      const formatCurrency = (amount) => {
         return parseFloat(amount).toFixed(2);
-      }
-      
-      // Add business details HTML for footer
-      const businessDetailsHtml = `
-        <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-          ${user.logo ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />` : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`}
-          <strong>${user.companyName || user.name}</strong><br/>
-          ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
-          ${user.phone || ''}<br/>
-          <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
-        </div>
-        <div style="height:40px;"></div>
-      `;
-      
-      const reminderHtml = `
+      };
+
+      // Replace the logoHtml logic in the invoice email HTML with the following:
+      const logoHtml = logoImage
+        ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+        : user.logo
+          ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+          : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+
+      const emailHtml = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -136,6 +137,25 @@ exports.sendInvoiceEmail = functions.firestore
                   <tr>
                     <td style="background:#2c5282;padding:24px 0 16px 0;border-radius:8px 8px 0 0;text-align:center;">
                       <span style="display:inline-block;width:100%;font-size:24px;font-weight:bold;color:#fff;letter-spacing:1px;">INVOICE #${invoice.invoiceNumber}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px 40px 0 40px;">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td valign="top" width="60" style="padding-right:20px;">
+                            ${logoHtml}
+                          </td>
+                          <td valign="top">
+                            <div style="font-size:20px;font-weight:bold;color:#2c5282;">${user.companyName || user.name}</div>
+                            <div style="font-size:13px;color:#333;margin-top:4px;">Business Number: ${user.taxId || ''}</div>
+                            <div style="font-size:13px;color:#333;">${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}</div>
+                            <div style="font-size:13px;color:#333;">${user.phone || ''}</div>
+                            <div style="font-size:13px;color:#333;"><a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
+                            ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+                          </td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                   <tr>
@@ -169,49 +189,120 @@ exports.sendInvoiceEmail = functions.firestore
                       <div style="font-size:15px;font-weight:bold;color:#2c5282;margin-bottom:8px;">BILL TO:</div>
                       <div style="font-size:15px;color:#333;">${client.name}</div>
                       <div style="font-size:13px;color:#333;">
-                        ${(client.street || client.address || '4125 Ponce de Leon') +
-                          (user.city ? ', ' + user.city : ', Coral Gables') +
-                          (user.state ? ', ' + user.state : ', Florida') +
-                          ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146')}
-                        <br>
-                        ${user.country || 'United States'}<br>
-                        ${user.phone || '+13129530404'}<br>
-                        ${user.email || 'ignacio+72@gmail.com'}<br>
-                        ${user.website || 'https://billienow.com/profile'}
+                        ${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
                       </div>
+                      <div style="font-size:13px;color:#333;">${client.email}</div>
+                      <div style="font-size:13px;color:#333;">${client.phone || ''}</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:24px 40px 0 40px;">
+                      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                        <thead>
+                          <tr>
+                            <th align="left" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Description</th>
+                            <th align="right" style="padding:10px;font-size:14px;font-weight:bold;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">${invoice.description}</td>
+                            <td align="right" style="padding:10px;font-size:14px;border-bottom:1px solid #e2e8f0;">$${formatCurrency(invoice.amount)}</td>
+                          </tr>
+                          <tr>
+                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">Total:</td>
+                            <td align="right" style="padding:10px;font-size:16px;font-weight:bold;background:#e6f7ff;border-top:2px solid #2c5282;">$${formatCurrency(invoice.amount)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  ${user.paymentInstructions ? `
+                  <tr>
+                    <td style="padding:0 40px 24px 40px;">
+                      <div style="margin-top:20px;text-align:center;color:#2c5282;font-size:15px;padding:10px;background:#e6f7ff;border-radius:5px;">
+                        ${user.paymentInstructions}
+                      </div>
+                    </td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="padding:32px 40px 32px 40px;border-top:1px solid #e2e8f0;text-align:center;background:#f8fafc;border-radius:0 0 8px 8px;">
+                      <div style="font-size:15px;color:#2c5282;margin-bottom:5px;font-weight:bold;">Thank you for your business!</div>
+                      <div style="font-size:13px;color:#666;">If you have any questions, please contact ${user.name} at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a></div>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
           </table>
-          ${businessDetailsHtml}
         </body>
         </html>
       `;
+
+      // Plain text version of the email (important for anti-spam)
+      const textContent = `
+INVOICE
+
+${user.companyName || user.name}
+${user.businessNumber ? `Business Number: ${user.businessNumber}` : ''}
+${user.address || ''}
+${user.phone || ''}
+${user.email}
+
+Invoice #: ${invoice.invoiceNumber}
+Date: ${invoice.date}
+Due Date: ${invoice.dueDate}
+Balance Due: USD $${formatCurrency(total)}
+
+Bill To:
+${client.name}
+${[(client.street || client.address), client.city, client.state, client.postalCode, client.country].filter(Boolean).join(', ')}
+${client.email}
+${client.phone || ''}
+
+${lineItems.map(item => `
+Description: ${item.description}
+Rate: $${formatCurrency(item.rate || item.amount)}
+Quantity: ${item.quantity || 1}
+${taxRate > 0 ? `Tax Rate: ${taxRate}%` : ''}
+Amount: $${formatCurrency(item.amount)}
+`).join('\n')}
+
+Subtotal: $${formatCurrency(subtotal)}
+${taxRate > 0 ? `Tax (${taxRate}%): $${formatCurrency(taxAmount)}` : ''}
+Total: $${formatCurrency(total)}
+${invoice.paymentAmount ? `
+Payment: -$${formatCurrency(invoice.paymentAmount)}
+Balance Due: USD $${formatCurrency(total - invoice.paymentAmount)}
+` : ''}
+
+${user.paymentInstructions ? user.paymentInstructions : ''}
+${user.venmoUsername ? `Venmo: @${user.venmoUsername}` : ''}
+${invoice.paymentLink ? `Pay Now: ${invoice.paymentLink}` : ''}
+${user.lateFeePolicy ? user.lateFeePolicy : ''}
+
+Thanks for your business!
+This is a transactional email sent from BillieNow on behalf of ${user.companyName || user.name || 'your service provider'}.
+      `;
+
+      // Anti-spam measures:
+      // 1. Use a verified sender domain (billienowcontact@gmail.com)
+      // 2. Set proper from name to maintain brand recognition
+      // 3. Add reply-to header with the user's email
+      // 4. Add proper email categories and headers
+      // 5. Include unsubscribe link (required by CAN-SPAM Act)
+      // 6. Include both HTML and plain text versions
+      // 7. Add proper DMARC-friendly headers
       
       const VERIFIED_SENDER = 'billienowcontact@gmail.com';
-      const fromName = `${user.name || senderName} via BillieNow`;
+
       const msg = {
         to: client.email,
         from: {
           email: VERIFIED_SENDER,
-          name: fromName
+          name: `${user.name || user.companyName || 'Your Service Provider'} via BillieNow`
         },
         replyTo: user.email,
-<<<<<<< HEAD
-        subject: `Invoice #${invoice.invoiceNumber}`,
-        text: `Dear ${client.name},\n\nPlease find attached your invoice #${invoice.invoiceNumber} for ${currency}${amount}. The invoice is due on ${new Date(invoice.dueDate).toLocaleDateString()}.\n\nRegards,\n${senderName}`,
-        html: reminderHtml,
-        attachments: [
-          {
-            content: pdfBuffer.toString('base64'),
-            filename: `Invoice_${invoice.invoiceNumber}.pdf`,
-            type: 'application/pdf',
-            disposition: 'attachment'
-          }
-        ]
-=======
         bcc: user.bccEmail || user.email, // BCC the user's specified BCC email or their own email
         subject: `Invoice #${invoice.invoiceNumber} from ${user.name || 'Your Service Provider'}`,
         text: textContent,
@@ -437,10 +528,10 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     };
     const logoImage = null;
     const logoHtml = logoImage
-      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
       : user.logo
-        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+        : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
     const currency = invoice.currency || '$';
@@ -518,12 +609,11 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
       text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${currency}${amount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${senderName}`,
       html: reminderHtml
->>>>>>> HEAD@{1}
     };
 
     try {
       await sgMail.send(msg);
-        // Log update notification activity
+      // Log reminder activity
       await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
         activity: admin.firestore.FieldValue.arrayUnion({
           type: 'reminder_sent',
@@ -531,9 +621,6 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
           date: new Date().toISOString()
         })
       });
-<<<<<<< HEAD
-        return { success: true, message: 'Invoice reminder sent successfully' };
-=======
       return { success: true, message: 'Reminder sent successfully' };
     } catch (error) {
       console.error('Error sending reminder:', error);
@@ -789,10 +876,10 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       }
     }
     const logoHtml = logoImage
-      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
+      ? `<img src="${logoImage}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
       : user.logo
-        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 12px auto;" />`
-        : `<div style="width:48px;height:48px;border-radius:50%;background:#2c5282;color:#fff;font-size:24px;font-weight:bold;text-align:center;line-height:48px;margin:0 auto 12px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+        ? `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`
+        : `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     
     const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
     const amount = formatCurrency(invoice.totalAmount || invoice.amount);
@@ -908,7 +995,6 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
         })
       });
       return { success: true, message: 'Update notification sent successfully' };
->>>>>>> HEAD@{1}
     } catch (error) {
       console.error('Error sending update notification:', error);
       
@@ -975,8 +1061,8 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
     if (providedInvoices && Array.isArray(providedInvoices) && providedInvoices.length > 0) {
       invoices = providedInvoices;
     } else {
-    const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
-    const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
+      const invoiceRefs = invoiceIds.map(id => admin.firestore().collection('users').doc(userId).collection('invoices').doc(id));
+      const invoiceSnaps = await admin.firestore().getAll(...invoiceRefs);
       invoices = invoiceSnaps.map(snap => snap.exists ? snap.data() : null).filter(Boolean);
     }
 
@@ -1099,13 +1185,6 @@ exports.logInvoiceUpdate = functions.firestore
     return null;
   });
 
-<<<<<<< HEAD
-// Helper to convert image URL to base64 data URL (reuse if already defined)
-async function urlToBase64(url) {
-  const response = await fetch(url);
-  const buffer = await response.buffer();
-  return 'data:image/png;base64,' + buffer.toString('base64');
-=======
 // --- PDF GENERATION HELPER ---
 async function generateInvoicePdfBuffer({ invoice, user, client, logoImage }) {
   const PdfPrinter = require('pdfmake');
@@ -1244,5 +1323,4 @@ async function generateInvoicePdfBuffer({ invoice, user, client, logoImage }) {
   pdfDoc.end();
   await new Promise(resolve => pdfDoc.on('end', resolve));
   return Buffer.concat(pdfChunks);
->>>>>>> HEAD@{1}
 }
