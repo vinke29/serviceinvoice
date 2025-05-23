@@ -530,11 +530,11 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     };
     let logoHtmlReminder = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      logoHtmlReminder = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 8px auto;" />`;
+      logoHtmlReminder = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
     } else {
-      logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;margin:0 auto 8px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+      logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
-    // Center logo above business details using a table
+    // Use the same business details block as update notification
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlReminder}</td></tr></table>
@@ -542,7 +542,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
         <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
-        ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+        ${user.website ? `<div style=\"font-size:13px;color:#2c5282;\"><a href=\"${user.website}\" style=\"color:#2c5282;text-decoration:underline;\">${user.website}</a></div>` : ''}
       </div>
       <div style="height:40px;"></div>
     `;
