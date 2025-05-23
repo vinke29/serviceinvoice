@@ -309,6 +309,33 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
         categories: ['invoice', 'transactional']
       };
 
+      // --- PDF Attachment Logic ---
+      // Helper to convert image URL to base64 data URL
+      async function urlToBase64(url) {
+        const response = await fetch(url);
+        const buffer = await response.buffer();
+        return 'data:image/png;base64,' + buffer.toString('base64');
+      }
+      let logoImage = null;
+      if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+        try {
+          logoImage = await urlToBase64(user.logo);
+        } catch (e) {
+          logoImage = null;
+        }
+      }
+      // Generate PDF buffer
+      const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
+      // Add PDF as attachment
+      msg.attachments = [
+        {
+          content: pdfBuffer.toString('base64'),
+          filename: `Invoice_${invoice.invoiceNumber}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ];
+
       await sgMail.send(msg);
       console.log('Email sent successfully for invoice:', invoiceId, '- Anti-spam measures applied');
       
@@ -880,196 +907,8 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       </table>` : 
       '<p style="font-size:15px;color:#333;">The details of this invoice have been updated.</p>';
     
-    // PDF generation logic
-    const fonts = {
-      Roboto: {
-        normal: path.join(__dirname, 'fonts/Roboto-Regular.ttf'),
-        bold: path.join(__dirname, 'fonts/Roboto-Bold.ttf'),
-        italics: path.join(__dirname, 'fonts/Roboto-Italic.ttf'),
-        bolditalics: path.join(__dirname, 'fonts/Roboto-BoldItalic.ttf')
-      }
-    };
-    const printer = new PdfPrinter(fonts);
-    
-    // Create a more professional PDF document that matches the one from the invoice drawer
-    const docDefinition = {
-      pageSize: 'A4',
-      pageMargins: [40, 40, 40, 60],
-      content: [
-        // Header with company info
-        {
-          columns: [
-            // Left column - company info with logo
-            {
-              width: '50%',
-              stack: [
-                // Include logo if available
-                logoImage ? {
-                  image: logoImage,
-                  width: 150,
-                  margin: [0, 0, 0, 10]
-                } : null,
-                { text: user.companyName || user.name || 'rivink', style: 'companyName' },
-                { text: `Business Number: ${user.taxId || '676457647'}`, style: 'companyDetail' },
-                { text: (user.street || user.address || '4125 Ponce de Leon') + 
-                    (user.city ? ', ' + user.city : ', Coral Gables') + 
-                    (user.state ? ', ' + user.state : ', Florida') + 
-                    ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ' 33146'), 
-                  style: 'companyDetail' 
-                },
-                { text: user.country || 'United States', style: 'companyDetail' },
-                { text: user.phone || '+13129530404', style: 'companyDetail' },
-                { text: user.email || 'ignacio+72@gmail.com', style: 'companyDetail' },
-                { text: user.website || 'https://billienow.com/profile', style: 'companyDetail' }
-              ].filter(item => item !== null) // Filter out null items (if no logo)
-            },
-            // Right column - invoice info
-            {
-              width: '50%',
-              stack: [
-                { text: 'INVOICE', style: 'invoiceTitle' },
-                { text: invoice.invoiceNumber, style: 'invoiceNumber', margin: [0, 5, 0, 15] },
-                { 
-                  columns: [
-                    { text: 'DATE', style: 'label', width: '50%' },
-                    { text: invoice.date, style: 'value', width: '50%' }
-                  ]
-                },
-                { 
-                  columns: [
-                    { text: 'DUE DATE', style: 'label', width: '50%' },
-                    { text: invoice.dueDate, style: 'value', width: '50%' }
-                  ],
-                  margin: [0, 5, 0, 0]
-                },
-                { 
-                  columns: [
-                    { text: 'BALANCE DUE', style: 'label', width: '50%' },
-                    { text: `USD $${formatCurrency(invoice.amount)}`, style: 'value', width: '50%' }
-                  ],
-                  margin: [0, 5, 0, 0]
-                }
-              ],
-              alignment: 'right'
-            }
-          ],
-          margin: [0, 0, 0, 30]
-        },
-        
-        // Bill to section
-        {
-          stack: [
-            { text: 'BILL TO', style: 'sectionHeader' },
-            { text: client.name, style: 'clientName', margin: [0, 5, 0, 0] },
-            { text: client.street || client.address || '4299 Northwest 36th Street', style: 'clientDetail' },
-            { text: (client.city || 'Miami Springs') + ', ' + (client.state || 'Florida') + ', ' + (client.postalCode || '33166'), style: 'clientDetail' },
-            { text: client.country || 'United States', style: 'clientDetail' },
-            { text: client.email || '', style: 'clientDetail' },
-            { text: client.phone || '', style: 'clientDetail' }
-          ],
-          margin: [0, 0, 0, 30]
-        },
-        
-        // Line items table
-        {
-          table: {
-            headerRows: 1,
-            widths: ['*', 'auto', 'auto', 'auto'],
-            body: [
-              // Header row
-              [
-                { text: 'DESCRIPTION', style: 'tableHeader' }, 
-                { text: 'RATE', style: 'tableHeader', alignment: 'right' },
-                { text: 'QTY', style: 'tableHeader', alignment: 'right' },
-                { text: 'AMOUNT', style: 'tableHeader', alignment: 'right' }
-              ],
-              // Line item row
-              [
-                { text: invoice.description || 'raaer', style: 'tableCell' },
-                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' },
-                { text: '1', style: 'tableCell', alignment: 'right' },
-                { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' }
-              ]
-            ]
-          },
-          layout: {
-            hLineWidth: function(i, node) {
-              return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0;
-            },
-            vLineWidth: function() {
-              return 0;
-            },
-            hLineColor: function() {
-              return '#EEEEEE';
-            }
-          }
-        },
-        
-        // Subtotal
-        {
-          columns: [
-            { width: '*', text: '' },
-            {
-              width: 'auto',
-              table: {
-                body: [
-                  [
-                    { text: 'SUBTOTAL', style: 'summaryLabel', alignment: 'right' },
-                    { text: `$${formatCurrency(invoice.amount)}`, style: 'summaryValue', alignment: 'right' }
-                  ],
-                  [
-                    { text: 'TOTAL', style: 'totalLabel', alignment: 'right' },
-                    { text: `$${formatCurrency(invoice.amount)}`, style: 'totalValue', alignment: 'right' }
-                  ]
-                ]
-              },
-              layout: 'noBorders',
-              margin: [0, 15, 0, 0]
-            }
-          ]
-        }
-      ],
-      styles: {
-        companyName: { fontSize: 20, bold: true, color: '#2c5282' },
-        companyDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
-        invoiceTitle: { fontSize: 30, bold: true, color: '#3b82f6' },
-        invoiceNumber: { fontSize: 14, bold: true },
-        label: { fontSize: 10, color: '#666666', bold: true },
-        value: { fontSize: 12, color: '#333333' },
-        sectionHeader: { fontSize: 12, bold: true, color: '#333333' },
-        clientName: { fontSize: 14, bold: true, color: '#333333' },
-        clientDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
-        tableHeader: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
-        tableCell: { fontSize: 10, color: '#333333', margin: [0, 5, 0, 5] },
-        summaryLabel: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
-        summaryValue: { fontSize: 10, color: '#333333', margin: [10, 5, 0, 5] },
-        totalLabel: { fontSize: 12, bold: true, color: '#333333', margin: [0, 5, 0, 5] },
-        totalValue: { fontSize: 12, bold: true, color: '#333333', margin: [10, 5, 0, 5] }
-      },
-      defaultStyle: {
-        font: 'Roboto'
-      }
-    };
-    
-    const pdfDoc = printer.createPdfKitDocument(docDefinition);
-    const pdfChunks = [];
-    pdfDoc.on('data', chunk => pdfChunks.push(chunk));
-    pdfDoc.end();
-    await new Promise(resolve => pdfDoc.on('end', resolve));
-    const pdfBuffer = Buffer.concat(pdfChunks);
-
-    // Upload PDF to Firebase Storage
-    const storage = new Storage();
-    const bucketName = admin.app().options.storageBucket;
-    const bucket = storage.bucket(bucketName);
-    const pdfFileName = `invoices/${userId}/invoice_${invoiceId}_updated.pdf`;
-    const file = bucket.file(pdfFileName);
-    await file.save(pdfBuffer, { contentType: 'application/pdf' });
-    await file.makePublic();
-    const pdfUrl = `https://storage.googleapis.com/${bucket.name}/${pdfFileName}`;
-
-    // Add PDF URL to the email body
-    const pdfUrlHtml = `<div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>`;
+    // Generate PDF buffer
+    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
 
     // Insert business details and PDF URL at the bottom of the email
     const updateHtml = `
@@ -1110,7 +949,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                       </tr>
                     </table>
                     <p style="font-size:15px;color:#333;">A revised copy of your invoice has been attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
-                    ${pdfUrlHtml}
+                    <div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
@@ -1137,7 +976,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       attachments: [
         {
           content: pdfBuffer.toString('base64'),
-          filename: `Invoice_${invoice.invoiceNumber}_Updated.pdf`,
+          filename: `Invoice_${invoice.invoiceNumber}.pdf`,
           type: 'application/pdf',
           disposition: 'attachment'
         }
@@ -1344,3 +1183,143 @@ exports.logInvoiceUpdate = functions.firestore
     });
     return null;
   });
+
+// --- PDF GENERATION HELPER ---
+async function generateInvoicePdfBuffer({ invoice, user, client, logoImage }) {
+  const PdfPrinter = require('pdfmake');
+  const path = require('path');
+  const fonts = {
+    Roboto: {
+      normal: path.join(__dirname, 'fonts/Roboto-Regular.ttf'),
+      bold: path.join(__dirname, 'fonts/Roboto-Bold.ttf'),
+      italics: path.join(__dirname, 'fonts/Roboto-Italic.ttf'),
+      bolditalics: path.join(__dirname, 'fonts/Roboto-BoldItalic.ttf')
+    }
+  };
+  const printer = new PdfPrinter(fonts);
+  const formatCurrency = (amount) => {
+    if (!amount || isNaN(amount)) return '0.00';
+    return parseFloat(amount).toFixed(2);
+  };
+  const docDefinition = {
+    pageSize: 'A4',
+    pageMargins: [40, 40, 40, 60],
+    content: [
+      {
+        columns: [
+          {
+            width: '50%',
+            stack: [
+              logoImage ? {
+                image: logoImage,
+                width: 150,
+                margin: [0, 0, 0, 10]
+              } : null,
+              { text: user.companyName || user.name || 'Billie', style: 'companyName' },
+              { text: `Business Number: ${user.taxId || ''}`, style: 'companyDetail' },
+              { text: (user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : ''), style: 'companyDetail' },
+              { text: user.country || '', style: 'companyDetail' },
+              { text: user.phone || '', style: 'companyDetail' },
+              { text: user.email || '', style: 'companyDetail' },
+              { text: user.website || '', style: 'companyDetail' }
+            ].filter(item => item !== null)
+          },
+          {
+            width: '50%',
+            stack: [
+              { text: 'INVOICE', style: 'invoiceTitle' },
+              { text: invoice.invoiceNumber, style: 'invoiceNumber', margin: [0, 5, 0, 15] },
+              { columns: [ { text: 'DATE', style: 'label', width: '50%' }, { text: invoice.date, style: 'value', width: '50%' } ] },
+              { columns: [ { text: 'DUE DATE', style: 'label', width: '50%' }, { text: invoice.dueDate, style: 'value', width: '50%' } ], margin: [0, 5, 0, 0] },
+              { columns: [ { text: 'BALANCE DUE', style: 'label', width: '50%' }, { text: `USD $${formatCurrency(invoice.amount)}`, style: 'value', width: '50%' } ], margin: [0, 5, 0, 0] }
+            ],
+            alignment: 'right'
+          }
+        ],
+        margin: [0, 0, 0, 30]
+      },
+      {
+        stack: [
+          { text: 'BILL TO', style: 'sectionHeader' },
+          { text: client.name, style: 'clientName', margin: [0, 5, 0, 0] },
+          { text: client.street || client.address || '', style: 'clientDetail' },
+          { text: (client.city || '') + (client.state ? ', ' + client.state : '') + (client.postalCode ? ', ' + client.postalCode : ''), style: 'clientDetail' },
+          { text: client.country || '', style: 'clientDetail' },
+          { text: client.email || '', style: 'clientDetail' },
+          { text: client.phone || '', style: 'clientDetail' }
+        ],
+        margin: [0, 0, 0, 30]
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: ['*', 'auto', 'auto', 'auto'],
+          body: [
+            [
+              { text: 'DESCRIPTION', style: 'tableHeader' },
+              { text: 'RATE', style: 'tableHeader', alignment: 'right' },
+              { text: 'QTY', style: 'tableHeader', alignment: 'right' },
+              { text: 'AMOUNT', style: 'tableHeader', alignment: 'right' }
+            ],
+            ...((invoice.lineItems && invoice.lineItems.length > 0) ? invoice.lineItems.map(item => [
+              { text: item.description, style: 'tableCell' },
+              { text: `$${formatCurrency(item.rate || item.amount)}`, style: 'tableCell', alignment: 'right' },
+              { text: item.quantity || 1, style: 'tableCell', alignment: 'right' },
+              { text: `$${formatCurrency(item.amount)}`, style: 'tableCell', alignment: 'right' }
+            ]) : [[
+              { text: invoice.description, style: 'tableCell' },
+              { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' },
+              { text: '1', style: 'tableCell', alignment: 'right' },
+              { text: `$${formatCurrency(invoice.amount)}`, style: 'tableCell', alignment: 'right' }
+            ]])
+          ]
+        },
+        layout: {
+          hLineWidth: function(i, node) { return (i === 0 || i === 1 || i === node.table.body.length) ? 1 : 0; },
+          vLineWidth: function() { return 0; },
+          hLineColor: function() { return '#EEEEEE'; }
+        }
+      },
+      {
+        columns: [
+          { width: '*', text: '' },
+          {
+            width: 'auto',
+            table: {
+              body: [
+                [ { text: 'SUBTOTAL', style: 'summaryLabel', alignment: 'right' }, { text: `$${formatCurrency(invoice.amount)}`, style: 'summaryValue', alignment: 'right' } ],
+                [ { text: 'TOTAL', style: 'totalLabel', alignment: 'right' }, { text: `$${formatCurrency(invoice.amount)}`, style: 'totalValue', alignment: 'right' } ]
+              ]
+            },
+            layout: 'noBorders',
+            margin: [0, 15, 0, 0]
+          }
+        ]
+      }
+    ],
+    styles: {
+      companyName: { fontSize: 20, bold: true, color: '#2c5282' },
+      companyDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
+      invoiceTitle: { fontSize: 30, bold: true, color: '#3b82f6' },
+      invoiceNumber: { fontSize: 14, bold: true },
+      label: { fontSize: 10, color: '#666666', bold: true },
+      value: { fontSize: 12, color: '#333333' },
+      sectionHeader: { fontSize: 12, bold: true, color: '#333333' },
+      clientName: { fontSize: 14, bold: true, color: '#333333' },
+      clientDetail: { fontSize: 10, color: '#333333', lineHeight: 1.2 },
+      tableHeader: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
+      tableCell: { fontSize: 10, color: '#333333', margin: [0, 5, 0, 5] },
+      summaryLabel: { fontSize: 10, bold: true, color: '#666666', margin: [0, 5, 0, 5] },
+      summaryValue: { fontSize: 10, color: '#333333', margin: [10, 5, 0, 5] },
+      totalLabel: { fontSize: 12, bold: true, color: '#333333', margin: [0, 5, 0, 5] },
+      totalValue: { fontSize: 12, bold: true, color: '#333333', margin: [10, 5, 0, 5] }
+    },
+    defaultStyle: { font: 'Roboto' }
+  };
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+  const pdfChunks = [];
+  pdfDoc.on('data', chunk => pdfChunks.push(chunk));
+  pdfDoc.end();
+  await new Promise(resolve => pdfDoc.on('end', resolve));
+  return Buffer.concat(pdfChunks);
+}
