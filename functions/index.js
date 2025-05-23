@@ -530,17 +530,14 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     };
     let logoHtmlReminder = '';
     if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      logoHtmlReminder = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+      logoHtmlReminder = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;margin:0 auto 8px auto;" />`;
     } else {
-      logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+      logoHtmlReminder = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;margin:0 auto 8px auto;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
     }
-    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
-    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
-    const currency = invoice.currency || '$';
-    // Fix logo centering in businessDetailsHtml for both update and reminder emails
+    // Center logo above business details using a table
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        <div style="width:100%;text-align:center;margin-bottom:8px;">${logoHtmlReminder}</div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlReminder}</td></tr></table>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -549,7 +546,9 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       </div>
       <div style="height:40px;"></div>
     `;
-    // Move businessDetailsHtml outside the main card in reminderHtml
+    const senderName = user.businessName || user.displayName || user.companyName || user.name || 'Your Service Provider';
+    const amount = formatCurrency(invoice.totalAmount || invoice.amount);
+    const currency = invoice.currency || '$';
     const reminderHtml = `
       <!DOCTYPE html>
       <html lang="en">
