@@ -949,8 +949,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
                         <td style="padding: 10px; border: 1px solid #ddd;">${new Date(invoice.dueDate).toLocaleDateString()}</td>
                       </tr>
                     </table>
-                    <p style="font-size:15px;color:#333;">A revised copy of your invoice has been attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
-                    <div style="margin-top:24px;font-size:14px;text-align:center;"><a href="${pdfUrl}" style="color:#2c5282;text-decoration:underline;">View or download the updated invoice PDF</a></div>
+                    <p style="font-size:15px;color:#333;">A revised copy of your invoice is attached for your records. If you have any questions about these changes, please don't hesitate to contact us.</p>
                     <p style="font-size:15px;color:#333;">Regards,<br>${senderName}</p>
                   </td>
                 </tr>
@@ -972,7 +971,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       },
       replyTo: user.email,
       subject: `Invoice #${invoice.invoiceNumber} Updated`,
-      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nYou can also view or download the updated invoice here: ${pdfUrl}\n\nRegards,\n${senderName}`,
+      text: `Dear ${client.name},\n\nThis is to inform you that your invoice #${invoice.invoiceNumber} for ${currency}${amount} has been updated. ${changes ? 'The following changes were made: ' + changes : 'Please review the attached updated invoice for details.'}\n\nIf you have any questions about these changes, please don't hesitate to contact us.\n\nA revised copy of your invoice is attached for your records.\n\nRegards,\n${senderName}`,
       html: updateHtml,
       attachments: [
         {
