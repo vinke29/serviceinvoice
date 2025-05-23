@@ -600,7 +600,15 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       replyTo: user.email,
       subject: `Payment Reminder for Invoice #${invoice.invoiceNumber}`,
       text: `Dear ${client.name},\n\nThis is a friendly reminder that invoice #${invoice.invoiceNumber} for ${currency}${amount} is due on ${new Date(invoice.dueDate).toLocaleDateString()}. Please make payment at your earliest convenience.\n\nRegards,\n${senderName}`,
-      html: reminderHtml
+      html: reminderHtml,
+      attachments: [
+        {
+          content: pdfBuffer.toString('base64'),
+          filename: `Invoice_${invoice.invoiceNumber}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ]
     };
 
     try {
