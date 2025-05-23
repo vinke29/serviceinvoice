@@ -537,7 +537,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     const currency = invoice.currency || '$';
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        ${logoHtml}
+        <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -911,7 +911,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
     // Add business details HTML for update notification
     const businessDetailsHtml = `
       <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-        ${logoHtml}
+        <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
         <strong>${user.companyName || user.name}</strong><br/>
         ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
         ${user.phone || ''}<br/>
@@ -1125,7 +1125,7 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
                   If you have any questions, please contact us at <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>.
                 </div>
                 <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
-                  ${logoHtml}
+                  <div style="display:flex;justify-content:center;align-items:center;width:100%;">${logoHtml}</div>
                   <strong>${user.companyName || user.name}</strong><br/>
                   ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
                   ${user.phone || ''}<br/>
