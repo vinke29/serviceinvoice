@@ -106,6 +106,24 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
       setPdfUploading(true);
       (async () => {
         try {
+          const userId = auth.currentUser.uid;
+          const invoiceId = invoice.id;
+          const pdfPath = `invoices/${userId}/${invoiceId}.pdf`;
+          const fileRef = storageRef(storage, pdfPath);
+          
+          // First try to get an existing PDF
+          try {
+            console.log('Attempting to get existing PDF at path:', pdfPath);
+            const url = await getDownloadURL(fileRef);
+            console.log('Found existing PDF, setting URL:', url.substring(0, 50) + '...');
+            setPdfUrl(url);
+            setPdfUploading(false);
+            return; // Exit early if we found an existing PDF
+          } catch (existingError) {
+            console.log('No existing PDF found, will generate new one:', existingError.message);
+            // Continue to generate a new one
+          }
+
           let mergedConfig = { ...agentConfig };
           if (userProfile) {
             mergedConfig = {
@@ -126,14 +144,27 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
               logo: userProfile.logo || null
             };
           }
+          
+          console.log('Generating PDF with data:', {
+            invoiceId: invoice.id,
+            invoiceAmount: invoice.amount,
+            clientId: client?.id,
+            hasUserProfile: !!userProfile,
+            hasLogo: !!mergedConfig.logo
+          });
+          
           const pdfBlob = await pdfService.generateInvoicePdf(invoice, client, mergedConfig);
-          const userId = auth.currentUser.uid;
-          const invoiceId = invoice.id;
-          const fileRef = storageRef(storage, `invoices/${userId}/${invoiceId}.pdf`);
+          console.log('PDF blob generated successfully, size:', pdfBlob.size);
+          
+          console.log('Uploading PDF to Firebase Storage path:', pdfPath);
           await uploadBytes(fileRef, pdfBlob, { contentType: 'application/pdf' });
+          console.log('PDF uploaded successfully, getting download URL');
+          
           const url = await getDownloadURL(fileRef);
+          console.log('Download URL obtained:', url.substring(0, 50) + '...');
           setPdfUrl(url);
         } catch (error) {
+          console.error('Error in PDF generation/upload process:', error);
           toast.error('Failed to generate or upload PDF.');
           setPdfUrl(null);
         } finally {
@@ -144,6 +175,50 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, isOpen, invoice, auth.currentUser, agentConfig, userProfile, client]);
 
+  // Add a function to create a direct download link
+  const createDirectPdfLink = async () => {
+    try {
+      if (!invoice || !client || !auth.currentUser) return null;
+      
+      console.log('Attempting to create direct PDF link as fallback');
+      let mergedConfig = { ...agentConfig };
+      if (userProfile) {
+        mergedConfig = {
+          ...mergedConfig,
+          companyName: userProfile.companyName || '',
+          // Just basic info needed for PDF
+          email: userProfile.email || '',
+          logo: userProfile.logo || null
+        };
+      }
+      
+      const pdfBlob = await pdfService.generateInvoicePdf(invoice, client, mergedConfig);
+      console.log('Direct PDF blob generated, size:', pdfBlob.size);
+      
+      // Create a direct blob URL instead of using Firebase Storage
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      console.log('Created direct blob URL:', blobUrl);
+      return blobUrl;
+    } catch (error) {
+      console.error('Failed to create direct PDF link:', error);
+      return null;
+    }
+  };
+
+  // Add an additional effect to try the fallback if Firebase storage fails
+  useEffect(() => {
+    // Only try this if we're still not getting a PDF after loading
+    if (tab === 'details' && !pdfUploading && !pdfUrl && isOpen && invoice) {
+      console.log('Trying to create fallback direct PDF link');
+      createDirectPdfLink().then(directUrl => {
+        if (directUrl) {
+          console.log('Using direct PDF URL as fallback');
+          setPdfUrl(directUrl);
+        }
+      });
+    }
+  }, [tab, pdfUploading, pdfUrl, isOpen, invoice]);
+
   if (!currentInvoice) return null
 
   // Format the invoice number
@@ -151,21 +226,52 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
 
   // Download PDF (fetch as Blob and trigger download)
   const handleDownloadPdf = async () => {
-    if (!pdfUrl) return;
+    if (pdfUrl) {
+      try {
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error('Failed to fetch PDF');
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (err) {
+        console.error('Error downloading PDF:', err);
+        toast.error('Failed to download PDF, trying alternative method...');
+        // Try fallback method
+        tryFallbackDownload();
+      }
+    } else if (!pdfUploading) {
+      // Try to generate directly if no URL is available
+      tryFallbackDownload();
+    }
+  };
+
+  // Fallback download method using direct generation
+  const tryFallbackDownload = async () => {
     try {
-      const response = await fetch(pdfUrl);
-      if (!response.ok) throw new Error('Failed to fetch PDF');
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch (err) {
-      toast.error('Failed to download PDF.');
+      console.log('Attempting fallback PDF download...');
+      const directUrl = await createDirectPdfLink();
+      if (directUrl) {
+        const link = document.createElement('a');
+        link.href = directUrl;
+        link.download = `${invoice?.invoiceNumber || 'invoice'}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(directUrl), 1000);
+        // Save for future use
+        setPdfUrl(directUrl);
+      } else {
+        toast.error('Could not generate PDF for download');
+      }
+    } catch (error) {
+      console.error('Fallback download failed:', error);
+      toast.error('Could not generate PDF for download');
     }
   };
 
@@ -227,8 +333,8 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
                   {/* Download PDF */}
                   <button
                     onClick={handleDownloadPdf}
-                    disabled={!pdfUrl}
-                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${pdfUrl ? 'bg-primary-600 hover:bg-primary-700' : 'bg-secondary-200 cursor-not-allowed'} transition`}
+                    disabled={!pdfUrl && pdfUploading}
+                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${!pdfUploading ? 'bg-primary-600 hover:bg-primary-700' : 'bg-secondary-200 cursor-not-allowed'} transition`}
                   >
                     <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
                     Download
@@ -240,21 +346,45 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
                         await navigator.clipboard.writeText(pdfUrl);
                         setCopied(true);
                         setTimeout(() => setCopied(false), 1500);
+                      } else if (currentInvoice && !pdfUploading) {
+                        // Try to get invoice directly
+                        const directUrl = await createDirectPdfLink();
+                        if (directUrl) {
+                          await navigator.clipboard.writeText(directUrl);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 1500);
+                          // Store for future use
+                          setPdfUrl(directUrl);
+                        } else {
+                          toast.error('Could not generate PDF link to copy');
+                        }
                       }
                     }}
-                    disabled={!pdfUrl}
-                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${pdfUrl ? 'text-primary-700 bg-primary-50 hover:bg-primary-100' : 'text-secondary-400 bg-secondary-100 cursor-not-allowed'} transition`}
+                    disabled={!pdfUrl && pdfUploading}
+                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${!pdfUploading ? 'text-primary-700 bg-primary-50 hover:bg-primary-100' : 'text-secondary-400 bg-secondary-100 cursor-not-allowed'} transition`}
                   >
                     <ClipboardIcon className="h-4 w-4 mr-2" />
                     {copied ? 'Copied!' : 'Copy Link'}
                   </button>
                   {/* Open in New Tab */}
                   <button
-                    onClick={() => {
-                      if (pdfUrl) window.open(pdfUrl, '_blank', 'noopener');
+                    onClick={async () => {
+                      if (pdfUrl) {
+                        window.open(pdfUrl, '_blank', 'noopener');
+                      } else if (currentInvoice && !pdfUploading) {
+                        // Try to get invoice directly
+                        const directUrl = await createDirectPdfLink();
+                        if (directUrl) {
+                          window.open(directUrl, '_blank', 'noopener');
+                          // Store for future use
+                          setPdfUrl(directUrl);
+                        } else {
+                          toast.error('Could not generate PDF to open');
+                        }
+                      }
                     }}
-                    disabled={!pdfUrl}
-                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${pdfUrl ? 'text-primary-700 bg-primary-50 hover:bg-primary-100' : 'text-secondary-400 bg-secondary-100 cursor-not-allowed'} transition`}
+                    disabled={!pdfUrl && pdfUploading}
+                    className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm ${!pdfUploading ? 'text-primary-700 bg-primary-50 hover:bg-primary-100' : 'text-secondary-400 bg-secondary-100 cursor-not-allowed'} transition`}
                   >
                     <ExternalLinkIcon className="h-4 w-4 mr-2" />
                     Open
