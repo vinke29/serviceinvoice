@@ -591,24 +591,6 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
     `;
     const VERIFIED_SENDER = 'billienowcontact@gmail.com';
     const fromName = `${user.name || senderName} via BillieNow`;
-
-    // --- PDF Attachment Logic (copied from sendInvoiceEmail) ---
-    async function urlToBase64(url) {
-      const response = await fetch(url);
-      const buffer = await response.buffer();
-      return 'data:image/png;base64,' + buffer.toString('base64');
-    }
-    let logoImage = null;
-    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
-      try {
-        logoImage = await urlToBase64(user.logo);
-      } catch (e) {
-        logoImage = null;
-      }
-    }
-    // Generate PDF buffer
-    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
-
     const msg = {
       to: client.email,
       from: {
