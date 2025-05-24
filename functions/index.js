@@ -781,6 +781,46 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
     }
     const VERIFIED_SENDER = 'billienowcontact@gmail.com';
     const fromName = `${user.name || senderName} via BillieNow`;
+    
+    // --- Add business details to HTML template ---
+    let logoHtmlEscalation = '';
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      logoHtmlEscalation = `<img src="${user.logo}" alt="${user.companyName || user.name}" style="width:60px;height:60px;object-fit:contain;border-radius:50%;background:#fff;display:block;" />`;
+    } else {
+      logoHtmlEscalation = `<div style="width:60px;height:60px;border-radius:50%;background:#2c5282;color:#fff;font-size:30px;font-weight:bold;text-align:center;line-height:60px;">${(user.companyName || user.name || 'B').charAt(0).toUpperCase()}</div>`;
+    }
+    const businessDetailsHtml = `
+      <div style="margin-top:32px;font-size:13px;color:#666;text-align:center;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding-bottom:8px;">${logoHtmlEscalation}</td></tr></table>
+        <strong>${user.companyName || user.name}</strong><br/>
+        ${(user.street || user.address || '') + (user.city ? ', ' + user.city : '') + (user.state ? ', ' + user.state : '') + ((user.postalCode || user.zip) ? ' ' + (user.postalCode || user.zip) : '')}<br/>
+        ${user.phone || ''}<br/>
+        <a href="mailto:${user.email}" style="color:#2c5282;text-decoration:none;">${user.email}</a>
+        ${user.website ? `<div style="font-size:13px;color:#2c5282;"><a href="${user.website}" style="color:#2c5282;text-decoration:underline;">${user.website}</a></div>` : ''}
+      </div>
+      <div style="height:40px;"></div>
+    `;
+    
+    // Add business details to the end of the HTML body
+    escalationHtml = escalationHtml.replace('</body></html>', `${businessDetailsHtml}</body></html>`);
+    
+    // --- PDF Attachment Logic ---
+    async function urlToBase64(url) {
+      const response = await fetch(url);
+      const buffer = await response.buffer();
+      return 'data:image/png;base64,' + buffer.toString('base64');
+    }
+    let logoImage = null;
+    if (user.logo && typeof user.logo === 'string' && user.logo.startsWith('http')) {
+      try {
+        logoImage = await urlToBase64(user.logo);
+      } catch (e) {
+        logoImage = null;
+      }
+    }
+    // Generate PDF buffer
+    const pdfBuffer = await generateInvoicePdfBuffer({ invoice, user, client, logoImage });
+    
     const msg = {
       to: client.email,
       from: { email: VERIFIED_SENDER, name: fromName },
@@ -788,7 +828,15 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
       subject: `Escalation Notice for Invoice #${invoice.invoiceNumber}`,
       text: textBody,
       html: escalationHtml
-    };
+    ,
+      attachments: [
+        {
+          content: pdfBuffer.toString('base64'),
+          filename: `Invoice_${invoice.invoiceNumber}.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment'
+        }
+      ]};
     try {
       await sgMail.send(msg);
       await admin.firestore().collection('users').doc(userId).collection('invoices').doc(invoiceId).update({
