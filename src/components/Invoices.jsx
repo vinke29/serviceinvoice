@@ -1454,16 +1454,35 @@ function Invoices() {
       await handleUpdateInvoice(cleanInvoice);
     } else {
       // Update all future scheduled invoices of the same type (including the selected one)
-      const updates = [updatedInvoice, ...futureInvoices].map(inv => {
+      // --- NEW LOGIC: Recalculate dates for all future invoices based on the new date and frequency ---
+      let currentDate = new Date(updatedInvoice.date);
+      const frequency = updatedInvoice.billingFrequency;
+      const netDays = agentConfig && agentConfig.netDays !== undefined ? agentConfig.netDays : 0;
+      const updates = [updatedInvoice, ...futureInvoices].map((inv, idx) => {
         // Create a clean invoice without _bulkUpdate flag
         const cleanInv = { ...inv };
         delete cleanInv._bulkUpdate;
-        
+        // For the first invoice, use the updated date; for others, increment by frequency
+        let newDate;
+        if (idx === 0) {
+          newDate = currentDate;
+        } else {
+          currentDate = calculateNextInvoiceDate(currentDate, frequency);
+          newDate = currentDate;
+        }
+        // Calculate due date based on agentConfig.netDays
+        let newDueDate;
+        if (netDays) {
+          newDueDate = addDays(newDate, netDays).toISOString().slice(0, 10);
+        } else {
+          newDueDate = newDate.toISOString().slice(0, 10);
+        }
         return {
           ...cleanInv,
           amount: updatedInvoice.amount,
-          date: inv.id === updatedInvoice.id ? updatedInvoice.date : inv.date, // Only update date for the edited invoice
-          billingFrequency: updatedInvoice.billingFrequency, // Propagate billing frequency changes
+          date: newDate.toISOString().slice(0, 10),
+          dueDate: newDueDate,
+          billingFrequency: frequency, // Propagate billing frequency changes
           activity: [
             ...(cleanInv.activity || []),
             {
@@ -1472,7 +1491,6 @@ function Invoices() {
               stage: 'Amount/date updated via bulk edit'
             }
           ]
-          // No _bulkUpdate flag
         };
       });
       for (const inv of updates) {
