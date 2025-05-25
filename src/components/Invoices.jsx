@@ -208,17 +208,31 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    console.log('FORM SUBMIT TRIGGERED on mobile')
+    console.log('FormData being submitted:', formData)
     
-    const selectedClient = clients.find(c => c.id === formData.clientId);
-    const finalData = {
-      ...formData,
-      clientId: formData.clientId,
-      clientName: selectedClient.name,
-      isRecurring: formData.billingFrequency !== 'one-time',
-      customized: false
+    try {
+      const selectedClient = clients.find(c => c.id === formData.clientId);
+      if (!selectedClient) {
+        console.error('No client found with ID:', formData.clientId);
+        return;
+      }
+      
+      console.log('Selected client:', selectedClient.name);
+      
+      const finalData = {
+        ...formData,
+        clientId: formData.clientId,
+        clientName: selectedClient.name,
+        isRecurring: formData.billingFrequency !== 'one-time',
+        customized: false
+      }
+      
+      console.log('Final data being sent to onSubmit:', finalData);
+      onSubmit(finalData)
+    } catch (error) {
+      console.error('Error in form submission:', error);
     }
-    
-    onSubmit(finalData)
   }
   
   const handleClientChange = (e) => {
@@ -1378,22 +1392,38 @@ function Invoices() {
         inv.id !== cleanedInvoice.id
       );
       
-      // Always reset modal state before setting new data
+      console.log('Future invoices found:', futureInvoices.length);
+      console.log('Current modal state:', showActiveInvoiceUpdateModal);
+      
+      // First, completely reset modal state by closing it
       setShowActiveInvoiceUpdateModal(false);
       setActiveInvoiceUpdateData(null);
       
-      modalKeyRef.current += 1; // increment for uniqueness
+      // Increment the key to ensure React sees this as a new modal instance
+      modalKeyRef.current += 1;
       
+      // Prepare the data for the modal
+      const modalData = {
+        updatedInvoice: cleanedInvoice,
+        originalInvoice,
+        futureInvoices,
+        client: clients.find(c => c.id === cleanedInvoice.clientId),
+        modalKey: modalKeyRef.current
+      };
+      
+      console.log('Setting activeInvoiceUpdateData:', modalData);
+      
+      // Use setTimeout to ensure state updates happen in sequence
       setTimeout(() => {
-        setActiveInvoiceUpdateData({
-          updatedInvoice: cleanedInvoice,
-          originalInvoice,
-          futureInvoices,
-          client: clients.find(c => c.id === cleanedInvoice.clientId),
-          modalKey: modalKeyRef.current // always unique
-        });
-        setShowActiveInvoiceUpdateModal(true);
-      }, 0); // 0ms is enough, React will batch the state updates
+        // Set the data first
+        setActiveInvoiceUpdateData(modalData);
+        
+        // Then open the modal in another tick
+        setTimeout(() => {
+          console.log('Opening modal now');
+          setShowActiveInvoiceUpdateModal(true);
+        }, 50);
+      }, 50);
       
       return;
     }
@@ -1780,11 +1810,17 @@ function Invoices() {
         </div>
         {/* InvoiceForm Modal */}
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={() => { setShowForm(false); setEditingInvoice(null); }}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" onClick={(e) => { 
+            // Only close if the click was directly on this element (the backdrop)
+            if (e.target === e.currentTarget) {
+              setShowForm(false); 
+              setEditingInvoice(null);
+            }
+          }}>
             <div
               className="bg-white rounded-none shadow-xl w-full h-full max-w-none max-h-none m-0 p-0 relative flex flex-col"
               onClick={e => e.stopPropagation()}
-              ref={modalContentRef} // <-- ensure this is here
+              ref={modalContentRef}
               style={{ height: '100%', width: '100%', overflowY: 'auto' }}
             >
               {/* Modal Header */}
@@ -1795,7 +1831,7 @@ function Invoices() {
               <div className="p-6 pt-2 flex-1 overflow-y-auto">
                 <InvoiceForm
                   invoice={editingInvoice}
-                  onSubmit={handleAddInvoice}
+                  onSubmit={editingInvoice ? handleUpdateInvoice : handleAddInvoice}
                   onCancel={() => { setShowForm(false); setEditingInvoice(null); }}
                   clients={clients}
                 />
@@ -1904,6 +1940,57 @@ function Invoices() {
               </>
             )}
           </>
+        )}
+        
+        {/* Add the ActiveInvoiceUpdateModal to the mobile version */}
+        <ActiveInvoiceUpdateModal
+          key={activeInvoiceUpdateData?.modalKey || 'mobile-update-modal'}
+          isOpen={showActiveInvoiceUpdateModal}
+          onClose={() => setShowActiveInvoiceUpdateModal(false)}
+          onConfirm={handleActiveInvoiceUpdateConfirm}
+          invoiceNumber={activeInvoiceUpdateData?.updatedInvoice?.invoiceNumber || ''}
+          clientName={activeInvoiceUpdateData?.client?.name || ''}
+          originalValues={{
+            amount: activeInvoiceUpdateData?.originalInvoice?.amount || '',
+            description: activeInvoiceUpdateData?.originalInvoice?.description || '',
+            dueDate: activeInvoiceUpdateData?.originalInvoice?.dueDate || '',
+            billingFrequency: activeInvoiceUpdateData?.originalInvoice?.billingFrequency || 'one-time'
+          }}
+          newValues={{
+            amount: activeInvoiceUpdateData?.updatedInvoice?.amount || '',
+            description: activeInvoiceUpdateData?.updatedInvoice?.description || '',
+            dueDate: activeInvoiceUpdateData?.updatedInvoice?.dueDate || '',
+            billingFrequency: activeInvoiceUpdateData?.updatedInvoice?.billingFrequency || 'one-time'
+          }}
+          futureInvoicesCount={activeInvoiceUpdateData?.futureInvoices?.length || 0}
+        />
+        
+        {/* Add other modals */}
+        <UpdateScheduledInvoicesModal
+          isOpen={showUpdateModal}
+          onClose={() => setShowUpdateModal(false)}
+          onConfirm={handleUpdateModalConfirm}
+          futureCount={futureScheduledCount}
+          invoiceAmount={pendingUpdateData?.updatedInvoice?.amount}
+          invoiceDate={pendingUpdateData?.updatedInvoice?.date}
+        />
+        
+        <DeleteInvoiceModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteModalConfirm}
+          invoice={deleteModalData?.invoice}
+          futureInvoicesCount={deleteModalData?.futureInvoices?.length || 0}
+          isRecurring={deleteModalData?.isRecurring}
+          isScheduled={deleteModalData?.isScheduled}
+          clientName={deleteModalData?.client?.name || ''}
+        />
+        
+        {successMessage && (
+          <SuccessNotification 
+            message={successMessage} 
+            onClose={() => setSuccessMessage(null)} 
+          />
         )}
       </div>
     );

@@ -52,9 +52,15 @@ const ActiveInvoiceUpdateModal = ({
   const hasRecurringFutureInvoices = futureInvoicesCount > 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden animate-fade-in" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 m-0" onClick={e => { 
+      console.log('Backdrop clicked'); 
+      if (e.target === e.currentTarget) onClose(); 
+    }}>
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-fade-in" onClick={e => {
+        console.log('Modal content clicked');
+        e.stopPropagation();
+      }}>
+        <div className="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h3 className="text-lg font-semibold text-gray-800">Update Invoice #{invoiceNumber}</h3>
         </div>
         <div className="px-6 py-4 space-y-4">
@@ -86,7 +92,7 @@ const ActiveInvoiceUpdateModal = ({
                 id="notifyClient" 
                 checked={options.notifyClient} 
                 onChange={() => setOptions({...options, notifyClient: !options.notifyClient})}
-                className="rounded text-primary-600 focus:ring-primary-500"
+                className="rounded text-primary-600 focus:ring-primary-500 w-5 h-5"
               />
               <label htmlFor="notifyClient" className="text-sm">
                 Send notification email to client with updated invoice
@@ -100,7 +106,7 @@ const ActiveInvoiceUpdateModal = ({
                   id="updateFutureInvoices" 
                   checked={options.updateFutureInvoices} 
                   onChange={() => setOptions({...options, updateFutureInvoices: !options.updateFutureInvoices})}
-                  className="rounded text-primary-600 focus:ring-primary-500"
+                  className="rounded text-primary-600 focus:ring-primary-500 w-5 h-5"
                 />
                 <label htmlFor="updateFutureInvoices" className="text-sm">
                   Update {futureInvoicesCount} future scheduled invoices with these changes
@@ -113,7 +119,7 @@ const ActiveInvoiceUpdateModal = ({
             <strong>Note:</strong> Client will receive a notification email with the updated invoice PDF attached.
           </p>
         </div>
-        <div className="px-6 py-3 bg-gray-50 flex justify-end space-x-3">
+        <div className="px-6 py-3 bg-gray-50 flex justify-end space-x-3 sticky bottom-0">
           <button 
             onClick={onClose} 
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
