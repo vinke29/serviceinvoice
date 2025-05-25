@@ -16,8 +16,8 @@ import PersonWave from '../assets/person-wave.png'
 import { invoiceGenerationService } from '../services/invoiceGenerationService'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import PhoneInput from 'react-phone-input-2'
+import 'react-phone-input-2/lib/style.css'
 import { useJsApiLoader, Autocomplete } from '@react-google-maps/api'
 
 // Simplified steps focused on key workflows
@@ -142,7 +142,6 @@ function OnboardingFlow({ onComplete }) {
       for (const field of step.inputFields) {
         if (!userInfo[field.name]) return;
       }
-      
       // If we're on the user info step, save the data to Firestore
       if (step.id === 'first-name') {
         const saveUserInfo = async () => {
@@ -399,9 +398,8 @@ function OnboardingFlow({ onComplete }) {
   const stepNumber = currentStep + 1;
 
   return (
-    <div className="relative min-h-[100dvh] w-full pt-[env(safe-area-inset-top)]">
-      <div className="fixed inset-0 -z-10 bg-gradient-to-b from-blue-100 via-blue-200 to-blue-500 w-full h-full" />
-      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center mt-14 md:mt-12 mb-12 p-8 rounded-2xl shadow-xl bg-white/70">
+    <div className="relative min-h-[100dvh] w-full pt-[env(safe-area-inset-top)] bg-white">
+      <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-center mt-14 md:mt-12 mb-12 p-8 rounded-2xl shadow-xl">
         {/* Step Counter */}
         {step.showStepCounter && (
           <div className="mb-6 text-blue-700 font-semibold text-lg w-full text-left">
@@ -432,11 +430,11 @@ function OnboardingFlow({ onComplete }) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                   {field.name === 'phone' ? (
                     <PhoneInput
-                      international
-                      defaultCountry="US"
+                      country={'us'}
                       value={userInfo.phone}
                       onChange={phone => setUserInfo(prev => ({ ...prev, phone }))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                      inputClass="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-blue-900 bg-white"
+                      containerClass="w-full"
                       required
                     />
                   ) : field.name === 'address' ? (
@@ -447,7 +445,7 @@ function OnboardingFlow({ onComplete }) {
                           value={userInfo.address || ''}
                           onChange={e => setUserInfo(prev => ({ ...prev, address: e.target.value }))}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-blue-900 bg-white"
                           required
                         />
                       </Autocomplete>
@@ -457,7 +455,7 @@ function OnboardingFlow({ onComplete }) {
                         value={userInfo.address || ''}
                         onChange={e => setUserInfo(prev => ({ ...prev, address: e.target.value }))}
                         placeholder={field.placeholder}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-blue-900 bg-white"
                         required
                       />
                     )
@@ -467,7 +465,7 @@ function OnboardingFlow({ onComplete }) {
                       value={userInfo[field.name]}
                       onChange={e => setUserInfo(prev => ({ ...prev, [field.name]: e.target.value }))}
                       placeholder={field.placeholder}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 bg-blue-50 text-blue-900"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 text-blue-900 bg-white"
                       required
                     />
                   )}
