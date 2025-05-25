@@ -281,7 +281,7 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
       `;
 
       // Anti-spam measures:
-      // 1. Use a verified sender domain (billienowcontact@gmail.com)
+      // 1. Use a verified sender domain (Admin@billienow.com)
       // 2. Set proper from name to maintain brand recognition
       // 3. Add reply-to header with the user's email
       // 4. Add proper email categories and headers
@@ -289,7 +289,7 @@ This is a transactional email sent from BillieNow on behalf of ${user.companyNam
       // 6. Include both HTML and plain text versions
       // 7. Add proper DMARC-friendly headers
       
-      const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+      const VERIFIED_SENDER = 'Admin@billienow.com';
 
       const msg = {
         to: client.email,
@@ -589,7 +589,7 @@ exports.sendInvoiceReminder = functions.https.onCall(async (data, context) => {
       </body>
       </html>
     `;
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const VERIFIED_SENDER = 'Admin@billienow.com';
     const fromName = `${user.name || senderName} via BillieNow`;
 
     // --- PDF Attachment Logic (copied from sendInvoiceEmail) ---
@@ -779,7 +779,7 @@ exports.sendInvoiceEscalation = functions.https.onCall(async (data, context) => 
           </table>
         </body></html>`;
     }
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const VERIFIED_SENDER = 'Admin@billienow.com';
     const fromName = `${user.name || senderName} via BillieNow`;
     
     // --- Add business details to HTML template ---
@@ -1044,7 +1044,7 @@ exports.sendInvoiceUpdateNotification = functions.https.onCall(async (data, cont
       </html>
     `;
     
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const VERIFIED_SENDER = 'Admin@billienow.com';
     const fromName = `${user.name || senderName} via BillieNow`;
     const msg = {
       to: client.email,
@@ -1214,7 +1214,7 @@ exports.sendInvoiceDeleteNotification = functions.https.onCall(async (data, cont
       </html>
     `;
 
-    const VERIFIED_SENDER = 'billienowcontact@gmail.com';
+    const VERIFIED_SENDER = 'Admin@billienow.com';
     const fromName = `${user.name || user.companyName || 'Your Service Provider'} via BillieNow`;
     const msg = {
       to: client.email,
