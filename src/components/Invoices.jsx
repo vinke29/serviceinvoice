@@ -1156,28 +1156,19 @@ function Invoices() {
       console.log("Created new invoice:", newInvoice)
       // Optionally, delete the original scheduled invoice
       await deleteInvoice(user.uid, scheduledInvoice.id)
-      // Update the local state with the new invoice
-      setInvoices(prev => {
-        // Make sure we're not duplicating
-        const exists = prev.some(inv =>
-          inv.id === newInvoice.id ||
-          (inv.clientId === newInvoice.clientId &&
-           inv.dueDate === newInvoice.dueDate &&
-           Math.abs(new Date(inv.date) - new Date(newInvoice.date)) < 86400000) // Within 24 hours
-        )
-        // Only add if it doesn't exist
-        if (!exists) {
-          return [...prev, newInvoice]
-        } else {
-          return prev
-        }
-      })
-      // Remove the scheduled invoice from the scheduledInvoices state immediately
+      
+      // Immediately update local state to remove the invoice from scheduled list
       setScheduledInvoices(prev => prev.filter(inv => inv.id !== scheduledInvoice.id));
-      alert(`Invoice for ${scheduledInvoice.clientName} has been created and sent successfully`)
+      
+      // Force a refresh of the invoices from Firestore to ensure everything is in sync
+      await refreshInvoices();
+      
+      // Use toast instead of alert
+      showToast('success', `Invoice for ${scheduledInvoice.clientName} has been created and sent successfully`);
     } catch (error) {
       console.error("Error sending invoice now:", error)
-      alert(`Error creating invoice: ${error.message}`)
+      // Use toast instead of alert for errors too
+      showToast('error', `Error creating invoice: ${error.message}`);
     }
   }
 
