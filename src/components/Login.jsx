@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import illustrationUrl from '../assets/invoice-illustration';
 
-export default function Login({ onAuth }) {
-  const [isSignup, setIsSignup] = useState(true);
+export default function Login({ onAuth, signupMode = false }) {
+  const navigate = useNavigate();
+  const [isSignup, setIsSignup] = useState(signupMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,6 +28,11 @@ export default function Login({ onAuth }) {
     return () => clearTimeout(timer);
   }, [isSignup]);
 
+  // Update isSignup if prop changes
+  useEffect(() => {
+    setIsSignup(signupMode);
+  }, [signupMode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -37,6 +44,9 @@ export default function Login({ onAuth }) {
         await signInWithEmailAndPassword(auth, email, password);
       }
       onAuth && onAuth();
+      
+      // Navigate to dashboard after successful authentication
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message.replace('Firebase: ', ''));
     } finally {
