@@ -187,8 +187,8 @@ function Demo() {
           <div className="overflow-hidden rounded-xl border border-blue-200 shadow-2xl">
             <div style={{ position: 'relative', paddingBottom: '53.6%', height: 0, width: '100%' }}>
               <iframe
-                src="https://demo.arcade.software/CgtmSuh05XxpdK10hFJG?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
-                title="Billie Demo"
+                src="https://demo.arcade.software/N3GxKgpij0yB2mwBOYCb?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
+                title="Billie v2"
                 frameBorder="0"
                 loading="lazy"
                 allowFullScreen

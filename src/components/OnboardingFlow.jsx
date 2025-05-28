@@ -12,7 +12,6 @@ import {
   GetPaidIllustration,
   Billie
 } from './OnboardingIllustrations'
-import PersonWave from '../assets/person-wave.png'
 import { invoiceGenerationService } from '../services/invoiceGenerationService'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
