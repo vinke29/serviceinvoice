@@ -396,7 +396,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
               )}
               {/* Edit Invoice Button */}
               <button
-                onClick={onEditInvoice}
+                onClick={() => onEditInvoice(currentInvoice)}
                 className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-semibold rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 transition"
               >
                 Edit Invoice
