@@ -360,7 +360,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         <label className="flex items-center justify-between text-base sm:text-sm font-medium text-secondary-700 mb-1">
           <span>Status</span>
           {isFutureInvoice && (
-            <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
               Future invoices are scheduled automatically
             </span>
           )}
@@ -370,7 +370,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           onChange={(e) => setFormData({ ...formData, status: e.target.value })}
           className={`w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border rounded-xl bg-white ${
             isFutureInvoice
-              ? 'border-purple-300 bg-purple-50 focus:ring-2 focus:ring-purple-300 focus:border-purple-300 text-purple-700'
+              ? 'border-blue-300 bg-blue-50 focus:ring-2 focus:ring-blue-300 focus:border-blue-300 text-blue-700'
               : 'border-secondary-200 focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
           }`}
           disabled={isFutureInvoice}
