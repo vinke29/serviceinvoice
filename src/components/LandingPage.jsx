@@ -108,19 +108,13 @@ function Hero() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="relative mx-auto max-w-md">
-              <div className="relative aspect-square h-[400px]">
-                <img
-                  src="/images/illustrations/billie-hero.png"
-                  alt="Meet Billie - Your Billing Assistant"
-                  className="object-contain w-full h-full"
-                />
-              </div>
-              
-              {/* Decorative elements */}
-              <div className="absolute -inset-4 bg-gradient-to-tr from-primary/50 via-primary/20 to-transparent rounded-full blur-3xl -z-10" />
-              <div className="absolute -inset-4 bg-gradient-to-bl from-primary/40 via-primary/10 to-transparent rounded-full blur-2xl -z-10" />
+          <div className="relative mx-auto max-w-xl">
+            <div className="relative h-[500px] w-full">
+              <img
+                src="/images/illustrations/billie-invoice-hero.png"
+                alt="Meet Billie - Your Billing Assistant"
+                className="object-contain w-full h-full rounded-2xl shadow-xl"
+              />
             </div>
           </div>
         </div>
