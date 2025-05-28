@@ -305,7 +305,10 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
             <div className="rounded-xl bg-white shadow border border-secondary-100 p-6">
               <div className="flex flex-col gap-1 mb-2">
                 <div className="flex items-center justify-between w-full">
-                  <div className="font-semibold text-secondary-900">Invoice #{displayInvoiceNumber}</div>
+                  <div>
+                    <div className="font-semibold text-secondary-900">Invoice #{displayInvoiceNumber}</div>
+                    <div className="text-xs text-secondary-400 mt-1">ID: {currentInvoice.id}</div>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="text-lg font-bold text-secondary-900">${currentInvoice.amount}</div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${currentInvoice.status === 'paid' ? 'bg-green-50 text-green-700' : currentInvoice.status === 'overdue' ? 'bg-red-50 text-red-700' : 'bg-yellow-50 text-yellow-700'}`}>{currentInvoice.status.charAt(0).toUpperCase() + currentInvoice.status.slice(1)}</span>

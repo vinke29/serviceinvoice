@@ -2236,7 +2236,8 @@ function Invoices() {
               {filteredInvoices.map((invoice) => (
                 <tr key={invoice.id} className="border-b border-secondary-100 hover:bg-secondary-50 cursor-pointer" onClick={() => handleViewInvoice(invoice)}>
                   <td className="py-4 px-4 font-medium text-secondary-900">
-                    {invoice.invoiceNumber || `INV-${invoice.id.substring(0, 4).toUpperCase()}`}
+                    <div>{invoice.invoiceNumber || `INV-${invoice.id.substring(0, 4).toUpperCase()}`}</div>
+                    <div className="text-xs text-secondary-400 mt-1">ID: {invoice.id}</div>
                   </td>
                   <td className="py-4 px-4">
                     <p className="font-medium text-secondary-900">{invoice.clientName}</p>
