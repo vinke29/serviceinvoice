@@ -25,6 +25,7 @@ import { Pencil2Icon } from '@radix-ui/react-icons';
 import UpdateScheduledInvoicesModal from './UpdateScheduledInvoicesModal';
 import ActiveInvoiceUpdateModal from './ActiveInvoiceUpdateModal';
 import DeleteInvoiceModal from './DeleteInvoiceModal.jsx';
+import { v4 as uuidv4 } from 'uuid';
 
 const sendInvoiceReminder = httpsCallable(functions, 'sendInvoiceReminder');
 const sendInvoiceEscalation = httpsCallable(functions, 'sendInvoiceEscalation');
@@ -696,7 +697,7 @@ function Invoices() {
   }, [clients, invoices]);
 
   // Modify the generateFutureInvoices function
-  const generateFutureInvoices = async (userId, invoiceData) => {
+  const generateFutureInvoices = async (userId, invoiceData, seriesId) => {
     if (!invoiceData.isRecurring || invoiceData.billingFrequency === 'one-time') {
       return [];
     }
@@ -773,7 +774,8 @@ function Invoices() {
           dueDate,
           status: 'scheduled',
           billingFrequency: invoiceData.billingFrequency,
-          isRecurring: true
+          isRecurring: true,
+          ...(seriesId ? { seriesId } : invoiceData.seriesId ? { seriesId: invoiceData.seriesId } : {})
         };
         
         scheduledInvoiceData.push(scheduledInvoice);
@@ -897,6 +899,18 @@ function Invoices() {
           }
         }
         
+        // Always declare seriesId
+        let seriesId = undefined;
+        if (invoiceData.billingFrequency && invoiceData.billingFrequency !== 'one-time') {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            seriesId = crypto.randomUUID();
+          } else if (typeof uuidv4 !== 'undefined') {
+            seriesId = uuidv4();
+          } else {
+            seriesId = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+          }
+        }
+        
         // Ensure we have all required fields
         const dataWithDate = {
           ...invoiceData,
@@ -906,7 +920,8 @@ function Invoices() {
           billingFrequency: invoiceData.billingFrequency || 'one-time', // Ensure billing frequency is set
           isRecurring: invoiceData.billingFrequency !== 'one-time', // Set the recurring flag
           // Status is already set correctly above based on isFutureInvoice
-          status: invoiceData.status
+          status: invoiceData.status,
+          ...(seriesId !== undefined ? { seriesId } : {})
         }
         
         console.log("Creating invoice with data:", dataWithDate);
@@ -971,8 +986,8 @@ function Invoices() {
         // Generate future invoices if this is a recurring invoice
         if (dataWithDate.isRecurring) {
           try {
-            // Generate future invoices immediately
-            const futureInvoices = await generateFutureInvoices(user.uid, dataWithDate);
+            // Generate future invoices immediately, passing seriesId
+            const futureInvoices = await generateFutureInvoices(user.uid, dataWithDate, seriesId);
             
             // Show success message with accurate count
             setSuccessMessage(
@@ -1375,22 +1390,39 @@ function Invoices() {
       let latestInvoices = invoices;
       try {
         if (initialLoad) {
-          // Only fetch from Firebase if we might have stale data
           latestInvoices = await getInvoices(user.uid);
           setInvoices(latestInvoices);
         }
       } catch (error) {
         console.error("Error refreshing invoices:", error);
       }
-      
-      // Check if we have future invoices for this client with same description (recurring series)
-      const futureInvoices = latestInvoices.filter(inv =>
-        inv.clientId === cleanedInvoice.clientId &&
-        inv.status === 'scheduled' &&
-        inv.description === cleanedInvoice.description &&
-        new Date(inv.date) > new Date() &&
-        inv.id !== cleanedInvoice.id
-      );
+      // Check if we have future invoices for this client with same seriesId (recurring series)
+      let futureInvoices = [];
+      if (cleanedInvoice.seriesId) {
+        futureInvoices = latestInvoices.filter(inv =>
+          inv.seriesId === cleanedInvoice.seriesId &&
+          inv.status === 'scheduled' &&
+          new Date(inv.date) > new Date() &&
+          inv.id !== cleanedInvoice.id
+        );
+      } else {
+        // fallback for legacy invoices without seriesId
+        futureInvoices = latestInvoices.filter(inv =>
+          inv.clientId === cleanedInvoice.clientId &&
+          inv.status === 'scheduled' &&
+          inv.description === cleanedInvoice.description &&
+          new Date(inv.date) > new Date() &&
+          inv.id !== cleanedInvoice.id
+        );
+      }
+      // Only show modal if amount, dueDate, or description changed
+      if (
+        originalInvoice.amount !== cleanedInvoice.amount ||
+        originalInvoice.dueDate !== cleanedInvoice.dueDate ||
+        originalInvoice.description !== cleanedInvoice.description
+      ) {
+        // ... existing code ...
+      }
       
       console.log('Future invoices found:', futureInvoices.length);
       console.log('Current modal state:', showActiveInvoiceUpdateModal);
