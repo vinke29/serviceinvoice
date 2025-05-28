@@ -184,9 +184,9 @@ function Demo() {
     <section id="demo-section" className="py-16 bg-white">
       <Container>
         <div className="text-center mb-16">
-          <H2 className="mb-4 text-blue-900">See BillieNow in Action</H2>
+          <H2 className="mb-4 text-blue-900">See Billie in Action</H2>
           <P className="text-xl text-blue-700 max-w-3xl mx-auto">
-            Watch how BillieNow transforms your billing workflow from chaos to clarity.
+            Watch how Billie transforms your billing workflow from chaos to clarity.
           </P>
         </div>
         <div className="relative mx-auto max-w-5xl">
@@ -194,7 +194,7 @@ function Demo() {
             <div style={{ position: 'relative', paddingBottom: '53.6%', height: 0, width: '100%' }}>
               <iframe
                 src="https://demo.arcade.software/CgtmSuh05XxpdK10hFJG?embed&embed_mobile=tab&embed_desktop=inline&show_copy_link=true"
-                title="BillieNow Demo"
+                title="Billie Demo"
                 frameBorder="0"
                 loading="lazy"
                 allowFullScreen
@@ -286,7 +286,7 @@ function CallToAction() {
             Ready to transform your billing process?
           </H2>
           <P className="text-white text-xl max-w-2xl mx-auto mb-8">
-            Join hundreds of businesses that have simplified their billing and improved their cash flow with BillieNow.
+            Join hundreds of businesses that have simplified their billing and improved their cash flow with Billie.
           </P>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
