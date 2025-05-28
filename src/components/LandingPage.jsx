@@ -9,10 +9,11 @@ function LandingNavbar() {
       <div className="max-w-7xl mx-auto flex items-center justify-between h-16 px-6">
         {/* Logo */}
         <span 
-          className="text-xl font-bold text-primary hover:text-primary/90 transition-colors cursor-pointer" 
+          className="flex items-center gap-3 cursor-pointer select-none" 
           onClick={() => navigate('/')}
         >
-          BillieNow
+          <span className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-900 text-white text-lg font-bold">B</span>
+          <span className="text-lg font-bold text-blue-900">Billie</span>
         </span>
 
         {/* Navigation Links */}
@@ -25,7 +26,8 @@ function LandingNavbar() {
           </button>
           <button
             onClick={() => navigate('/signup')}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium px-4 py-2 bg-primary text-white shadow-sm hover:bg-primary-700 transition"
+            className="inline-flex items-center justify-center rounded-md text-sm font-bold px-4 py-2 bg-blue-700 text-white shadow-lg border border-blue-800 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 transition disabled:bg-blue-300 disabled:text-white/70 disabled:cursor-not-allowed"
+            disabled={false}
           >
             Get Started
           </button>
@@ -79,7 +81,7 @@ function Hero() {
           <div className="relative z-10 text-center lg:text-left">
             <H1 className="mb-6 text-blue-900">
               Tired of chasing payments? <br />
-              <span className="text-primary">
+              <span className="text-blue-700">
                 Then don't. Billie does it for you.
               </span>
             </H1>
@@ -89,7 +91,8 @@ function Hero() {
             <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center">
               <Button 
                 onClick={() => navigate('/signup')} 
-                className="bg-primary hover:bg-primary-700 text-white shadow-md group"
+                className="bg-blue-700 hover:bg-blue-800 text-white shadow-lg border border-blue-800 font-bold group focus:outline-none focus:ring-2 focus:ring-blue-400 transition disabled:bg-blue-300 disabled:text-white/70 disabled:cursor-not-allowed"
+                disabled={false}
               >
                 Get Started
                 <svg xmlns="http://www.w3.org/2000/svg" className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -98,7 +101,7 @@ function Hero() {
               </Button>
               <Button 
                 onClick={() => document.getElementById('demo-section').scrollIntoView({ behavior: 'smooth' })}
-                className="border-2 border-primary text-primary hover:bg-primary-50 shadow-sm"
+                className="bg-white text-blue-700 border-2 border-blue-700 hover:bg-blue-50 shadow-sm"
               >
                 View Demo
               </Button>
@@ -147,7 +150,7 @@ function Painpoints() {
   ];
   
   return (
-    <section className="py-24 bg-blue-50">
+    <section className="py-16 bg-gray-50">
       <Container>
         <div className="text-center mb-16">
           <H2 className="mb-4 text-blue-900">Common Billing Challenges</H2>
@@ -178,7 +181,7 @@ function Painpoints() {
 // Demo Section
 function Demo() {
   return (
-    <section id="demo-section" className="py-24 bg-white">
+    <section id="demo-section" className="py-16 bg-white">
       <Container>
         <div className="text-center mb-16">
           <H2 className="mb-4 text-blue-900">See BillieNow in Action</H2>
@@ -244,7 +247,7 @@ function Features() {
   ];
   
   return (
-    <section className="py-24 bg-blue-50">
+    <section className="py-16 bg-blue-50">
       <Container>
         <div className="text-center mb-16">
           <H2 className="mb-4 text-blue-900">Everything you need to streamline billing</H2>
@@ -276,7 +279,7 @@ function CallToAction() {
   const navigate = useNavigate();
   
   return (
-    <section className="py-24 bg-gradient-to-br from-primary to-primary-800">
+    <section className="py-16 bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800">
       <Container>
         <div className="text-center">
           <H2 className="text-white mb-6">
