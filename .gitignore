@@ -1,0 +1,50 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+/dist
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# Firebase
+.firebase
+.firebaserc
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Sensitive information
+**/serviceAccountKey.json
+**/credentials.json
+**/api-keys.json
+**/*.key
+**/*.pem
+
+# Google Cloud SDK
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz 
