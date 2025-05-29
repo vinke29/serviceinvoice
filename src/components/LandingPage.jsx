@@ -153,7 +153,7 @@ function Painpoints() {
   return (
     <section className="py-16 bg-gray-50">
       <Container>
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
           <H2 className="mb-4 text-blue-900">Common Billing Challenges</H2>
           <P className="text-xl text-blue-700 max-w-3xl mx-auto">
             We understand the frustrations that come with managing business payments. Here's how Billie helps you overcome them.
@@ -248,7 +248,7 @@ function Features() {
   return (
     <section className="py-16 bg-blue-50">
       <Container>
-        <div className="text-center mb-16">
+        <div className="text-center mb-10">
           <H2 className="mb-4 text-blue-900">Everything you need to streamline billing</H2>
           <P className="text-xl text-blue-700 max-w-3xl mx-auto">
             Powerful features that help you take control of your billing process and focus on growing your business.
