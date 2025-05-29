@@ -20,6 +20,9 @@ const formatDateString = (date) => {
 };
 
 function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) {
+  console.log('Environment variables:', import.meta.env);
+  console.log('Google Maps API Key:', import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -43,6 +46,8 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: ['places'],
   });
+
+  console.log('Google Maps isLoaded:', isLoaded);
 
   const [addressFields, setAddressFields] = useState({
     street: '',
@@ -162,27 +167,54 @@ function ClientForm({ client, onSubmit, onCancel, scheduledInvoicesCount = 0 }) 
           <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Street Name</label>
           {isLoaded ? (
             <Autocomplete
-              onLoad={ac => setAutocomplete(ac)}
+              onLoad={ac => {
+                console.log('Autocomplete loaded:', ac);
+                setAutocomplete(ac);
+              }}
               onPlaceChanged={() => {
-                if (!autocomplete) return;
-                const place = autocomplete.getPlace();
-                const components = place && place.address_components ? place.address_components : [];
-                if (!components.length) {
-                  alert('Could not extract address components from the selected place. Please try again or enter manually.');
+                console.log('Place changed, autocomplete:', autocomplete);
+                if (!autocomplete) {
+                  console.error('Autocomplete is not loaded yet');
                   return;
                 }
-                const getComponent = (type) => {
-                  const comp = components.find(c => c.types.includes(type));
-                  return comp ? comp.long_name : '';
-                };
-                const street = [getComponent('street_number'), getComponent('route')].filter(Boolean).join(' ').trim();
-                setAddressFields({
-                  street,
-                  city: getComponent('locality') || getComponent('sublocality') || '',
-                  state: getComponent('administrative_area_level_1'),
-                  postalCode: getComponent('postal_code'),
-                  country: getComponent('country'),
-                });
+                try {
+                  const place = autocomplete.getPlace();
+                  console.log('Selected place:', place);
+                  
+                  if (!place) {
+                    console.error('No place selected');
+                    return;
+                  }
+
+                  const components = place.address_components || [];
+                  console.log('Address components:', components);
+
+                  if (!components.length) {
+                    console.warn('No address components found');
+                    alert('Could not extract address components from the selected place. Please try again or enter manually.');
+                    return;
+                  }
+
+                  const getComponent = (type) => {
+                    const comp = components.find(c => c.types.includes(type));
+                    return comp ? comp.long_name : '';
+                  };
+
+                  const street = [getComponent('street_number'), getComponent('route')].filter(Boolean).join(' ').trim();
+                  const newAddressFields = {
+                    street,
+                    city: getComponent('locality') || getComponent('sublocality') || '',
+                    state: getComponent('administrative_area_level_1'),
+                    postalCode: getComponent('postal_code'),
+                    country: getComponent('country'),
+                  };
+                  
+                  console.log('Setting address fields:', newAddressFields);
+                  setAddressFields(newAddressFields);
+                } catch (error) {
+                  console.error('Error processing place:', error);
+                  alert('There was an error processing the selected address. Please try again or enter manually.');
+                }
               }}
             >
               <input
