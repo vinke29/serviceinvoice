@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-function Drawer({ isOpen, onClose, title, children }) {
+function Drawer({ isOpen, onClose, title, children, maxWidth }) {
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
@@ -28,7 +28,7 @@ function Drawer({ isOpen, onClose, title, children }) {
         onClick={onClose}
       />
       <div 
-        className="fixed top-0 right-0 h-full w-full max-w-[28rem] bg-white shadow-xl flex flex-col z-[101]"
+        className={`fixed top-0 right-0 h-full w-full ${maxWidth || 'max-w-[28rem]'} bg-white shadow-xl flex flex-col z-[101]`}
       >
         <div className="px-6 py-4 border-b border-secondary-200 flex items-center justify-between bg-white">
           <h3 className="text-xl font-semibold text-secondary-900">{title}</h3>
