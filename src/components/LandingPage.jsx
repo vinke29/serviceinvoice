@@ -1,6 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Import images
+import heroImage from '../assets/images/landing-page/billie-invoice-hero.png';
+import confusedImage from '../assets/images/landing-page/landscaper-confused.png';
+import paymentsImage from '../assets/images/landing-page/landscaper-payments4.png';
+import runningImage from '../assets/images/landing-page/landscaper-running.png';
+
 // Minimal Landing Navbar
 function LandingNavbar() {
   const navigate = useNavigate();
@@ -112,7 +118,7 @@ function Hero() {
           <div className="relative mx-auto max-w-xl">
             <div className="relative h-[500px] w-full">
               <img
-                src="/images/landing-page/billie-invoice-hero.png"
+                src={heroImage}
                 alt="Meet Billie - Your Billing Assistant"
                 className="object-contain w-full h-full rounded-2xl shadow-xl"
               />
@@ -130,17 +136,17 @@ function Painpoints() {
     {
       title: "Confused by Complex Billing?",
       description: "Stop struggling with complicated systems and manual invoice processing. Our intuitive platform makes billing simple.",
-      image: "/images/landing-page/landscaper-confused.png"
+      image: confusedImage
     },
     {
       title: "Too Many Payment Methods?",
       description: "Managing different payment platforms shouldn't be a hassle. We keep track of all invoices in one place.",
-      image: "/images/landing-page/landscaper-payments4.png"
+      image: paymentsImage
     },
     {
       title: "Chasing Late Payments?",
       description: "No more running after customers for overdue payments. Automated reminders and follow-ups keep your cash flowing.",
-      image: "/images/landing-page/landscaper-running.png"
+      image: runningImage
     }
   ];
   
