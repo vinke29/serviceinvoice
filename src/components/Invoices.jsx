@@ -34,6 +34,9 @@ const sendInvoiceDeleteNotification = httpsCallable(functions, 'sendInvoiceDelet
 console.log("sendInvoiceReminder is defined:", typeof sendInvoiceReminder);
 console.log("sendInvoiceEscalation is defined:", typeof sendInvoiceEscalation);
 
+// Add this at the top of the file:
+const minimalRedesign = false; // Toggle this to false to revert to the old UI
+
 // Helper function to check if a date is in the future
 function isDateInFuture(checkDate) {
   // Parse both dates as local YYYY-MM-DD
@@ -127,7 +130,8 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     status: 'pending',
     billingFrequency: 'one-time',
     isRecurring: false,
-    customized: false
+    customized: false,
+    items: [] // Add items to formData state
   })
   const [agentConfig, setAgentConfig] = useState(null)
   const [isFutureInvoice, setIsFutureInvoice] = useState(false)
@@ -173,6 +177,16 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         status: invoice.status || 'pending',
         isRecurring: invoice.isRecurring || invoice.type === 'Recurring' || false
       };
+      
+      // If invoice.items is empty but description/amount exist, prepopulate items
+      if ((!invoice.items || invoice.items.length === 0) && invoice.description && invoice.amount) {
+        cleanFormData.items = [{
+          id: Date.now() + '-' + Math.random(),
+          description: invoice.description,
+          quantity: 1,
+          unitPrice: parseFloat(invoice.amount) || 0
+        }];
+      }
       
       console.log('SETTING CLEAN FORM DATA:', cleanFormData);
       setFormData(cleanFormData);
@@ -221,12 +235,18 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
       
       console.log('Selected client:', selectedClient.name);
       
+      let itemsTotal = 0;
+      if (formData.items && formData.items.length > 0) {
+        itemsTotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      }
+      
       const finalData = {
         ...formData,
         clientId: formData.clientId,
         clientName: selectedClient.name,
         isRecurring: formData.billingFrequency !== 'one-time',
-        customized: false
+        customized: false,
+        amount: formData.items && formData.items.length > 0 ? itemsTotal : formData.amount
       }
       
       console.log('Final data being sent to onSubmit:', finalData);
@@ -284,21 +304,122 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         )}
       </div>
       <div className="mb-2">
-        <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Amount</label>
-        <div className="relative">
-          <span className="absolute left-4 top-3 text-secondary-500 text-base sm:text-sm pointer-events-none">$</span>
-          <input
-            type="number"
-            value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            className="w-full pl-10 pr-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-            required
-            placeholder="0.00"
-            min="0"
-            step="0.01"
-          />
+        <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Invoice Summary</label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+          rows="3"
+          placeholder="Add a summary or memo for this invoice (optional)"
+        />
+      </div>
+      <div className="bg-secondary-50 rounded-2xl shadow p-6 mb-6">
+        <div className="font-semibold text-lg mb-4">Items</div>
+        <table className="w-full rounded-xl overflow-hidden">
+          <thead className="bg-secondary-100">
+            <tr>
+              <th className="text-left px-4 py-3 text-secondary-500 text-xs font-semibold">Description</th>
+              <th className="text-left px-4 py-3 text-secondary-500 text-xs font-semibold">Qty</th>
+              <th className="text-left px-4 py-3 text-secondary-500 text-xs font-semibold">Unit Price</th>
+              <th className="text-left px-4 py-3 text-secondary-500 text-xs font-semibold">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {formData.items.map((item, idx) => (
+              <tr key={item.id || idx} className="border-b last:border-b-0">
+                <td className="px-4 py-3 text-base font-medium">
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={e => {
+                      const items = [...formData.items];
+                      items[idx].description = e.target.value;
+                      setFormData(f => ({ ...f, items }));
+                    }}
+                    className="w-full px-2 py-1 border border-secondary-200 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={e => {
+                      const items = [...formData.items];
+                      items[idx].quantity = parseInt(e.target.value) || 1;
+                      setFormData(f => ({ ...f, items }));
+                    }}
+                    className="w-16 px-2 py-1 border border-secondary-200 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.unitPrice}
+                    onChange={e => {
+                      const items = [...formData.items];
+                      items[idx].unitPrice = parseFloat(e.target.value) || 0;
+                      setFormData(f => ({ ...f, items }));
+                    }}
+                    className="w-24 px-2 py-1 border border-secondary-200 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    required
+                  />
+                </td>
+                <td className="px-4 py-3 text-right text-base font-semibold text-secondary-900">${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                <td className="px-4 py-3 text-right">
+                  <button type="button" onClick={() => {
+                    const items = formData.items.filter((_, i) => i !== idx);
+                    setFormData(f => ({ ...f, items }));
+                  }} className="p-2 rounded-full hover:bg-red-100 text-red-500 focus:outline-none focus:ring-2 focus:ring-red-400" title="Remove Item">
+                    {/* Trash Icon SVG */}
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="border-t border-secondary-200 mt-4 pt-4 flex justify-between items-center">
+          <button type="button" onClick={() => {
+            setFormData(f => ({
+              ...f,
+              items: [
+                ...f.items,
+                { id: Date.now() + '-' + Math.random(), description: '', quantity: 1, unitPrice: 0 }
+              ]
+            }));
+          }} className="flex items-center bg-primary-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-400">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Add Item
+          </button>
+          <div className="text-xl font-bold text-secondary-900">
+            Total: ${formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toFixed(2)}
+          </div>
         </div>
       </div>
+      {formData.items.length === 0 && (
+        <div className="mb-2">
+          <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Amount</label>
+          <div className="relative">
+            <span className="absolute left-4 top-3 text-secondary-500 text-base sm:text-sm pointer-events-none">$</span>
+            <input
+              type="number"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              className="w-full pl-10 pr-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              required
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+            />
+          </div>
+        </div>
+      )}
       <div className="mb-2">
         <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Billing Frequency</label>
         <select
@@ -313,17 +434,6 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
           <option value="biannually">Bi-annually</option>
           <option value="annually">Annually</option>
         </select>
-      </div>
-      <div className="mb-2">
-        <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-3 min-h-[44px] text-base sm:text-sm appearance-none border border-secondary-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-          rows="3"
-          required
-          placeholder="Describe the invoice..."
-        />
       </div>
       <div className="mb-2">
         <label className="block text-base sm:text-sm font-medium text-secondary-700 mb-1">Invoice Date</label>
@@ -2273,6 +2383,9 @@ function Invoices() {
                   </td>
                   <td className="py-4 px-4">
                     <p className="font-medium text-secondary-900">{invoice.clientName}</p>
+                    {invoice.description && (
+                      <div className="text-xs text-secondary-500 mt-1">{invoice.description}</div>
+                    )}
                   </td>
                   <td className="py-4 px-4">
                     <span className="font-medium text-secondary-900">${invoice.amount}</span>
@@ -2570,6 +2683,7 @@ function Invoices() {
           setEditingInvoice(null)
         }}
         title={editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}
+        maxWidth='max-w-[50vw]'
       >
         <InvoiceForm
           invoice={editingInvoice}

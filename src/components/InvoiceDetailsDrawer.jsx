@@ -276,7 +276,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
   };
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title={`Invoice: ${displayInvoiceNumber}`}>
+    <Drawer isOpen={isOpen} onClose={onClose} title={`Invoice: ${displayInvoiceNumber}`} maxWidth="max-w-[50vw]">
       {/* Tab Bar */}
       <div className="flex border-b border-secondary-200 mb-4">
         <button
@@ -298,11 +298,11 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
           Activity
         </button>
       </div>
-      <div className="space-y-8">
+      <div className="space-y-8 px-4 md:px-8 lg:px-12 xl:px-16">
         {tab === 'details' && (
           <div className="space-y-6">
             {/* Unified Minimalistic Summary Card */}
-            <div className="rounded-xl bg-white shadow border border-secondary-100 p-6">
+            <div className="rounded-xl bg-white shadow border border-secondary-100 p-8 mb-10">
               <div className="flex flex-col gap-1 mb-2">
                 <div className="flex items-center justify-between w-full">
                   <div>
@@ -320,11 +320,17 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
                 <div><span className="font-medium">Invoice Date:</span> {new Date(currentInvoice.date || currentInvoice.createdAt).toLocaleDateString()}</div>
                 <div><span className="font-medium">Due Date:</span> {new Date(currentInvoice.dueDate).toLocaleDateString()} {agentConfig && <span className="text-xs text-secondary-500 ml-1">(Net {agentConfig.netDays} days)</span>}</div>
                 <div><span className="font-medium">Billing Type:</span> {currentInvoice.billingFrequency ? (currentInvoice.billingFrequency === 'one-time' ? 'One-Time Charge' : `Recurring (${currentInvoice.billingFrequency.charAt(0).toUpperCase() + currentInvoice.billingFrequency.slice(1)})`) : 'Not specified'}</div>
-                <div><span className="font-medium">Description:</span> {currentInvoice.description}</div>
+              </div>
+              {/* Invoice Summary Section */}
+              <div className="mt-6">
+                <div className="font-semibold text-secondary-800 mb-1 text-base">Invoice Summary</div>
+                <div className="text-secondary-700 text-sm bg-secondary-50 rounded-lg p-4 min-h-[32px]">
+                  {currentInvoice.description ? currentInvoice.description : <span className="text-secondary-400">—</span>}
+                </div>
               </div>
             </div>
             {/* PDF Actions & Edit Invoice Card */}
-            <div className="rounded-xl bg-white shadow border border-secondary-100 p-4 flex flex-col gap-4">
+            <div className="rounded-xl bg-white shadow border border-secondary-100 p-8 mb-10">
               <div className="font-semibold text-secondary-900 mb-2">Invoice PDF</div>
               {pdfUploading ? (
                 <div className="flex flex-col items-center justify-center min-h-[56px]">
