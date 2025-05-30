@@ -1,13 +1,22 @@
 import { Button } from "../ui/button";
 import { ArrowRight, Check } from "lucide-react";
 import { InvoiceDemo } from "./InvoiceDemo";
+import { useNavigate } from "react-router-dom";
 
 export const HeroSection = ({ scrollY }) => {
+  const navigate = useNavigate();
   const parallaxOffset = scrollY * 0.5;
+
+  const scrollToPainPoints = () => {
+    const demosSection = document.querySelector('#demos');
+    if (demosSection) {
+      demosSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <section className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 pt-16 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left side - Content */}
           <div 
@@ -55,14 +64,17 @@ export const HeroSection = ({ scrollY }) => {
               <Button 
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold group"
                 size="lg"
+                onClick={() => navigate('/signup')}
               >
                 Get Started Free
                 <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
+
               <Button 
                 variant="outline"
-                className="border-2 border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold"
+                className="border-2 border-blue-200 hover:bg-blue-50 text-blue-700 font-semibold w-full sm:w-auto"
                 size="lg"
+                onClick={scrollToPainPoints}
               >
                 See How It Works
               </Button>
@@ -80,8 +92,8 @@ export const HeroSection = ({ scrollY }) => {
       </div>
 
       {/* Background elements */}
-      <div className="absolute top-1/4 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse"></div>
-      <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse delay-1000"></div>
+      <div className="absolute top-1/4 right-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse z-0"></div>
+      <div className="absolute bottom-1/4 left-0 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-pulse delay-1000 z-0"></div>
     </section>
   );
 }; 
