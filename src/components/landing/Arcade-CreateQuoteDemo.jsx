@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 export function CreateQuoteDemo() {
   return (
     <div style={{ position: 'relative', paddingBottom: 'calc(53.63204344874406% + 41px)', height: 0, width: '100%' }}>
