@@ -145,6 +145,17 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
             };
           }
           
+          // Map items to lineItems for PDF compatibility
+          let invoiceForPdf = { ...invoice };
+          if (invoice.items && !invoice.lineItems) {
+            invoiceForPdf.lineItems = invoice.items.map(item => ({
+              description: item.description,
+              quantity: item.quantity,
+              rate: item.unitPrice,
+              amount: (item.quantity * item.unitPrice)
+            }));
+          }
+          
           console.log('Generating PDF with data:', {
             invoiceId: invoice.id,
             invoiceAmount: invoice.amount,
@@ -153,7 +164,7 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
             hasLogo: !!mergedConfig.logo
           });
           
-          const pdfBlob = await pdfService.generateInvoicePdf(invoice, client, mergedConfig);
+          const pdfBlob = await pdfService.generateInvoicePdf(invoiceForPdf, client, mergedConfig);
           console.log('PDF blob generated successfully, size:', pdfBlob.size);
           
           console.log('Uploading PDF to Firebase Storage path:', pdfPath);
@@ -192,7 +203,18 @@ function InvoiceDetailsDrawer({ isOpen, onClose, invoice, onEditInvoice }) {
         };
       }
       
-      const pdfBlob = await pdfService.generateInvoicePdf(invoice, client, mergedConfig);
+      // Map items to lineItems for PDF compatibility
+      let invoiceForPdf = { ...invoice };
+      if (invoice.items && !invoice.lineItems) {
+        invoiceForPdf.lineItems = invoice.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.unitPrice,
+          amount: (item.quantity * item.unitPrice)
+        }));
+      }
+      
+      const pdfBlob = await pdfService.generateInvoicePdf(invoiceForPdf, client, mergedConfig);
       console.log('Direct PDF blob generated, size:', pdfBlob.size);
       
       // Create a direct blob URL instead of using Firebase Storage
