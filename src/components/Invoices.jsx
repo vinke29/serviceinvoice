@@ -391,11 +391,17 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
                 ${(Number(item.quantity) * Number(item.unitPrice) || 0).toFixed(2)}
               </div>
               {/* Remove button */}
-              <div className="md:col-span-1 flex items-center justify-center w-8">
-                <button type="button" onClick={() => {
-                  const items = formData.items.filter((_, i) => i !== idx);
-                  setFormData(f => ({ ...f, items }));
-                }} className="text-red-500 hover:text-red-700 transition text-lg" title="Remove item">
+              <div className="md:col-span-1 flex items-center justify-end w-full md:w-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const items = formData.items.filter((_, i) => i !== idx);
+                    setFormData(f => ({ ...f, items }));
+                  }}
+                  className="text-red-500 hover:text-red-700 transition text-lg p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300 active:bg-red-100 w-9 h-9 flex items-center justify-center bg-transparent md:bg-white md:shadow-sm md:static md:right-auto md:top-auto"
+                  aria-label="Remove item"
+                  style={{ zIndex: 2 }}
+                >
                   ×
                 </button>
               </div>
