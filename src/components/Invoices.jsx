@@ -136,6 +136,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
   const [agentConfig, setAgentConfig] = useState(null)
   const [isFutureInvoice, setIsFutureInvoice] = useState(false)
   const [isCustomDueDate, setIsCustomDueDate] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // Load agent config on mount
   useEffect(() => {
@@ -233,40 +234,24 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
     }
   }, [invoice]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log('FORM SUBMIT TRIGGERED on mobile')
-    console.log('FormData being submitted:', formData)
-    
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
-      const selectedClient = clients.find(c => c.id === formData.clientId);
-      if (!selectedClient) {
-        console.error('No client found with ID:', formData.clientId);
-        return;
-      }
-      
-      console.log('Selected client:', selectedClient.name);
-      
       let itemsTotal = 0;
       if (formData.items && formData.items.length > 0) {
-        itemsTotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        itemsTotal = formData.items.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unitPrice)), 0);
       }
-      
       const finalData = {
         ...formData,
-        clientId: formData.clientId,
-        clientName: selectedClient.name,
-        isRecurring: formData.billingFrequency !== 'one-time',
-        customized: false,
         amount: formData.items && formData.items.length > 0 ? itemsTotal : formData.amount
-      }
-      
-      console.log('Final data being sent to onSubmit:', finalData);
-      onSubmit(finalData)
-    } catch (error) {
-      console.error('Error in form submission:', error);
+      };
+      await onSubmit(finalData);
+    } finally {
+      setSubmitting(false);
     }
-  }
+  };
   
   const handleClientChange = (e) => {
     const clientId = e.target.value
@@ -367,14 +352,24 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
                       <input
                         type="number"
                         min="1"
-                        value={item.quantity}
+                        value={item.quantity === '' ? '' : item.quantity}
                         onChange={e => {
+                          const val = e.target.value;
                           const items = [...formData.items];
-                          items[idx].quantity = Number(e.target.value);
+                          // Allow empty string for editing, otherwise parse as number
+                          items[idx].quantity = val === '' ? '' : val.replace(/^0+(?!$)/, ''); // Remove leading zeros
                           setFormData(f => ({ ...f, items }));
                         }}
-                        className="w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
-                        placeholder="e.g. 2"
+                        onBlur={e => {
+                          const items = [...formData.items];
+                          // On blur, if empty or invalid, set to 1
+                          if (!items[idx].quantity || isNaN(Number(items[idx].quantity)) || Number(items[idx].quantity) < 1) {
+                            items[idx].quantity = 1;
+                            setFormData(f => ({ ...f, items }));
+                          }
+                        }}
+                        className="md:col-span-1 w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
+                        placeholder="Qty"
                       />
                     </div>
                     <div className="flex-1">
@@ -557,6 +552,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
               type="button"
               onClick={() => setStep(step - 1)}
               className="px-6 py-3 rounded-lg font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition shadow-sm"
+              disabled={submitting}
             >
               Back
             </button>
@@ -566,7 +562,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
               type="button"
               onClick={() => setStep(step + 1)}
               className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 shadow-lg transition border-none ml-auto"
-              disabled={step === 0 && !formData.clientId}
+              disabled={step === 0 && !formData.clientId || submitting}
             >
               Next
             </button>
@@ -575,8 +571,13 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
             <button
               type="submit"
               className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 shadow-lg transition border-none ml-auto"
+              disabled={submitting}
             >
-              {invoice ? 'Update Invoice' : 'Create Invoice'}
+              {submitting ? (
+                <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Creating...</span>
+              ) : (
+                invoice ? 'Update Invoice' : 'Create Invoice'
+              )}
             </button>
           )}
         </div>
@@ -648,11 +649,21 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
               <input
                 type="number"
                 min="1"
-                value={item.quantity}
+                value={item.quantity === '' ? '' : item.quantity}
                 onChange={e => {
+                  const val = e.target.value;
                   const items = [...formData.items];
-                  items[idx].quantity = Number(e.target.value);
+                  // Allow empty string for editing, otherwise parse as number
+                  items[idx].quantity = val === '' ? '' : val.replace(/^0+(?!$)/, ''); // Remove leading zeros
                   setFormData(f => ({ ...f, items }));
+                }}
+                onBlur={e => {
+                  const items = [...formData.items];
+                  // On blur, if empty or invalid, set to 1
+                  if (!items[idx].quantity || isNaN(Number(items[idx].quantity)) || Number(items[idx].quantity) < 1) {
+                    items[idx].quantity = 1;
+                    setFormData(f => ({ ...f, items }));
+                  }
                 }}
                 className="md:col-span-1 w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
                 placeholder="Qty"
@@ -810,14 +821,20 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
           type="button"
           onClick={onCancel}
           className="px-6 py-3 rounded-lg font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition shadow-sm"
+          disabled={submitting}
         >
           Cancel
         </button>
         <button
           type="submit"
           className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 shadow-lg transition border-none"
+          disabled={submitting}
         >
-          {invoice ? 'Update Invoice' : 'Create Invoice'}
+          {submitting ? (
+            <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Creating...</span>
+          ) : (
+            invoice ? 'Update Invoice' : 'Create Invoice'
+          )}
         </button>
       </div>
     </form>
