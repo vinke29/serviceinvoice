@@ -110,7 +110,7 @@ function InvoiceCard({ invoice }) {
   )
 }
 
-function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
+function InvoiceForm({ invoice, onSubmit, onCancel, clients = [], isMobile }) {
   // Filter only active clients (case-insensitive comparison)
   const activeClients = clients.filter(client => client.status.toLowerCase() === 'active');
 
@@ -296,6 +296,295 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
     ? itemsSubtotal
     : Number(formData.amount) || 0;
 
+  // Step state for mobile
+  const [step, setStep] = useState(0);
+  const steps = [
+    'Client',
+    'Summary & Items',
+    'Dates & Frequency',
+    'Review'
+  ];
+
+  // Helper to render step content for mobile
+  const renderStepContent = () => {
+    switch (step) {
+      case 0:
+        return (
+          <div className="mb-1">
+            <label className="block text-base font-semibold text-blue-800 mb-1">Client</label>
+            <select
+              value={formData.clientId}
+              onChange={handleClientChange}
+              className="w-full px-4 py-2 min-h-[40px] text-base border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white shadow-sm transition placeholder-gray-700"
+              required
+            >
+              <option value="">Select a client</option>
+              {activeClients.length > 0 ? (
+                activeClients.map(client => (
+                  <option key={client.id} value={client.id}>{client.name}</option>
+                ))
+              ) : (
+                <option value="" disabled>No active clients available for invoicing</option>
+              )}
+            </select>
+            {activeClients.length === 0 && (
+              <p className="mt-2 text-sm text-blue-500">Only active clients are eligible for invoicing. Please activate or add a client.</p>
+            )}
+          </div>
+        );
+      case 1:
+        return (
+          <>
+            <div className="mb-1">
+              <label className="block text-base font-semibold text-blue-800 mb-1">Summary</label>
+              <textarea
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-4 py-2 min-h-[44px] border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white placeholder-gray-400 shadow-sm transition"
+                placeholder="Describe the work, project, or service..."
+              />
+            </div>
+            {/* Items Section (improved for clarity) */}
+            <div className="mb-1">
+              <label className="block text-base font-semibold text-blue-800 mb-1">Line Items</label>
+              {formData.items.map((item, idx) => (
+                <div key={item.id || idx} className="border rounded-lg p-3 mb-3 bg-blue-50">
+                  <label className="block text-xs font-medium text-blue-700 mb-1">Description</label>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={e => {
+                      const items = [...formData.items];
+                      items[idx].description = e.target.value;
+                      setFormData(f => ({ ...f, items }));
+                    }}
+                    className="w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white min-w-0 placeholder-gray-400 mb-2"
+                    placeholder="e.g. Consulting hours"
+                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-blue-700 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={e => {
+                          const items = [...formData.items];
+                          items[idx].quantity = Number(e.target.value);
+                          setFormData(f => ({ ...f, items }));
+                        }}
+                        className="w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
+                        placeholder="e.g. 2"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-blue-700 mb-1">Unit Price</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold pointer-events-none">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.unitPrice === '' ? '' : item.unitPrice}
+                          onChange={e => {
+                            const items = [...formData.items];
+                            items[idx].unitPrice = e.target.value === '' ? '' : Number(e.target.value);
+                            setFormData(f => ({ ...f, items }));
+                          }}
+                          className="w-full pl-7 pr-2 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
+                          placeholder="e.g. 50.00"
+                          inputMode="decimal"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-blue-700 font-medium">Line Total:</span>
+                    <span className="text-base font-bold text-blue-900">${(Number(item.quantity) * Number(item.unitPrice) || 0).toFixed(2)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const items = formData.items.filter((_, i) => i !== idx);
+                        setFormData(f => ({ ...f, items }));
+                      }}
+                      className="text-red-500 hover:text-red-700 transition text-lg p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-300 active:bg-red-100 w-9 h-9 flex items-center justify-center bg-transparent"
+                      aria-label="Remove item"
+                      style={{ zIndex: 2 }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(f => ({
+                    ...f,
+                    items: [
+                      ...f.items,
+                      { id: Date.now() + '-' + Math.random(), description: '', quantity: 1, unitPrice: '' }
+                    ]
+                  }));
+                }}
+                className="flex items-center justify-center gap-2 w-full mt-1 py-2 border border-blue-200 rounded-lg text-blue-700 font-medium bg-white hover:bg-blue-50 hover:border-blue-400 transition shadow-sm"
+                style={{ fontSize: '1rem' }}
+              >
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-blue-300 bg-blue-50 text-blue-500 mr-1">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
+                </span>
+                Add Item
+              </button>
+            </div>
+          </>
+        );
+      case 2:
+        return (
+          <>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-base font-semibold text-blue-800 mb-1">Invoice Date</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={e => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white shadow-sm transition"
+                />
+              </div>
+              <div>
+                <label className="block text-base font-semibold text-blue-800 mb-1">Due Date</label>
+                <input
+                  type="date"
+                  value={formData.dueDate}
+                  onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
+                  className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white shadow-sm transition"
+                />
+              </div>
+            </div>
+            <div className="mb-1 mt-4">
+              <label className="block text-base font-semibold text-blue-800 mb-1">Billing Frequency</label>
+              <select
+                value={formData.billingFrequency}
+                onChange={handleFrequencyChange}
+                className="w-full px-4 py-2 border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white shadow-sm transition"
+              >
+                <option value="one-time">One-Time</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+          </>
+        );
+      case 3:
+        return (
+          <div className="p-4 bg-blue-50 rounded-xl shadow">
+            <div className="flex items-center mb-4">
+              <svg className="w-6 h-6 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+              <h2 className="text-lg font-bold">Review Invoice</h2>
+            </div>
+            <div className="mb-2"><b>Client:</b> {clients.find(c => c.id === formData.clientId)?.name || ''}</div>
+            <div className="mb-2"><b>Summary:</b> {formData.description}</div>
+            <hr className="my-3" />
+            <div className="mb-2">
+              <b>Items:</b>
+              <table className="w-full mt-2 text-sm">
+                <thead>
+                  <tr className="text-blue-700">
+                    <th className="text-left">Description</th>
+                    <th className="text-center">Qty</th>
+                    <th className="text-center">Unit Price</th>
+                    <th className="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formData.items.map((item, idx) => (
+                    <tr key={idx}>
+                      <td>{item.description}</td>
+                      <td className="text-center">{item.quantity}</td>
+                      <td className="text-center">${Number(item.unitPrice).toFixed(2)}</td>
+                      <td className="text-right">${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <hr className="my-3" />
+            <div className="flex justify-between items-center text-lg font-bold mb-2">
+              <span>Total:</span>
+              <span className="text-primary-600 text-2xl">${totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-blue-100 text-sm text-blue-700 opacity-80">
+              <div className="flex justify-between mb-1">
+                <span>Invoice Date:</span>
+                <span>{formData.date}</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span>Due Date:</span>
+                <span>{formData.dueDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Billing Frequency:</span>
+                <span>{formData.billingFrequency}</span>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // ... existing code ...
+
+  // Render
+  if (isMobile) {
+    return (
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-0 sm:px-0 pb-20 min-h-screen bg-white">
+        {/* Progress Indicator */}
+        <div className="flex justify-center items-center gap-2 my-4">
+          {steps.map((label, idx) => (
+            <div key={label} className={`w-2 h-2 rounded-full ${idx === step ? 'bg-primary-600' : 'bg-blue-200'}`}></div>
+          ))}
+        </div>
+        {/* Step Content */}
+        {renderStepContent()}
+        {/* Navigation Buttons */}
+        <div className="sticky bottom-0 left-0 w-full bg-gradient-to-t from-white via-white/90 to-white/60 pt-6 pb-2 px-0 flex gap-4 justify-between z-10 border-t border-blue-100">
+          {step > 0 && (
+            <button
+              type="button"
+              onClick={() => setStep(step - 1)}
+              className="px-6 py-3 rounded-lg font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition shadow-sm"
+            >
+              Back
+            </button>
+          )}
+          {step < steps.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setStep(step + 1)}
+              className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 shadow-lg transition border-none ml-auto"
+              disabled={step === 0 && !formData.clientId}
+            >
+              Next
+            </button>
+          )}
+          {step === steps.length - 1 && (
+            <button
+              type="submit"
+              className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-primary-500 to-primary-700 hover:from-primary-600 hover:to-primary-800 shadow-lg transition border-none ml-auto"
+            >
+              {invoice ? 'Update Invoice' : 'Create Invoice'}
+            </button>
+          )}
+        </div>
+      </form>
+    );
+  }
+  // ... existing code ...
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-0 sm:px-0 pb-20 min-h-screen bg-white">
       {/* Client Section */}
@@ -326,7 +615,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
         <textarea
           value={formData.description}
           onChange={e => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-4 py-2 min-h-[44px] border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white placeholder-gray-700 shadow-sm transition"
+          className="w-full px-4 py-2 min-h-[44px] border border-blue-200 rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-primary-400 bg-white placeholder-gray-400 shadow-sm transition"
           placeholder="Describe the work, project, or service..."
         />
       </div>
@@ -352,7 +641,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
                   items[idx].description = e.target.value;
                   setFormData(f => ({ ...f, items }));
                 }}
-                className="md:col-span-2 flex-1 px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white min-w-0 placeholder-gray-700"
+                className="md:col-span-2 flex-1 px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white min-w-0 placeholder-gray-400"
                 placeholder="Item description"
               />
               {/* Quantity */}
@@ -365,7 +654,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
                   items[idx].quantity = Number(e.target.value);
                   setFormData(f => ({ ...f, items }));
                 }}
-                className="md:col-span-1 w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-700"
+                className="md:col-span-1 w-full px-3 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
                 placeholder="Qty"
               />
               {/* Unit Price with $ inside input */}
@@ -381,7 +670,7 @@ function InvoiceForm({ invoice, onSubmit, onCancel, clients = [] }) {
                     items[idx].unitPrice = e.target.value === '' ? '' : Number(e.target.value);
                     setFormData(f => ({ ...f, items }));
                   }}
-                  className="w-full pl-7 pr-2 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-700"
+                  className="w-full pl-7 pr-2 py-2 border border-blue-200 rounded focus:ring-2 focus:ring-primary-400 bg-white placeholder-gray-400"
                   placeholder="Price"
                   inputMode="decimal"
                 />
@@ -1994,6 +2283,7 @@ function Invoices() {
                   onSubmit={editingInvoice ? handleUpdateInvoice : handleAddInvoice}
                   onCancel={() => { setShowForm(false); setEditingInvoice(null); }}
                   clients={clients}
+                  isMobile={isMobile}
                 />
               </div>
             </div>
@@ -2711,6 +3001,7 @@ function Invoices() {
             setShowForm(false)
             setEditingInvoice(null)
           }}
+          isMobile={isMobile}
         />
       </Drawer>
 
